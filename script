@@ -1,4 +1,4 @@
--- RBX Wix UI - Interfaz Premium con Funciones Avanzadas
+-- RBX Wix UI - Interfaz Mejorada con Funciones Avanzadas
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
@@ -17,29 +17,30 @@ local RBXWix = {
     Enabled = false,
     ToggleKey = Enum.KeyCode.H,
     FullbrightEnabled = false,
-    JumpLoopEnabled = false,
+    JumpPowerEnabled = false,
     ESPEnabled = false,
     WalkSpeedEnabled = false,
     WalkSpeedValue = 25,
-    JumpKey = Enum.KeyCode.N,
+    JumpPowerValue = 50,
     NoclipEnabled = false,
+    FogEnabled = false,
     ESPObjects = {},
     ESPHealth = true,
     ESPDistance = true,
     NoclipConnections = {}
 }
 
--- Colores modernos con tema azul oscuro premium
+-- Colores modernos con tema azul oscuro
 local colors = {
     primary = Color3.fromRGB(0, 120, 215),
     secondary = Color3.fromRGB(40, 40, 40),
-    background = Color3.fromRGB(15, 15, 20),
+    background = Color3.fromRGB(20, 20, 25),
     text = Color3.fromRGB(240, 240, 240),
     accent = Color3.fromRGB(0, 180, 255),
     toggleOn = Color3.fromRGB(0, 200, 83),
     toggleOff = Color3.fromRGB(80, 80, 80),
-    card = Color3.fromRGB(25, 25, 30),
-    header = Color3.fromRGB(20, 20, 25),
+    card = Color3.fromRGB(30, 30, 35),
+    header = Color3.fromRGB(25, 25, 30),
     success = Color3.fromRGB(76, 175, 80),
     warning = Color3.fromRGB(255, 193, 7),
     danger = Color3.fromRGB(244, 67, 54)
@@ -62,7 +63,7 @@ backgroundFrame.Visible = false
 backgroundFrame.Active = true
 backgroundFrame.Parent = screenGui
 
--- Crear la ventana principal con bordes redondeados y efecto de vidrio
+-- Crear la ventana principal con bordes redondeados
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 500, 0, 500)
@@ -77,9 +78,6 @@ mainFrame.Parent = screenGui
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 15)
 corner.Parent = mainFrame
-
--- Efecto de vidrio (transparencia con blur)
-mainFrame.BackgroundTransparency = 0.05
 
 -- Sombra de la ventana mejorada
 local shadow = Instance.new("ImageLabel")
@@ -136,24 +134,6 @@ closeButton.Parent = titleBar
 local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(1, 0)
 closeCorner.Parent = closeButton
-
--- Botón de minimizar
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Name = "MinimizeButton"
-minimizeButton.Size = UDim2.new(0, 40, 0, 40)
-minimizeButton.Position = UDim2.new(1, -80, 0, 0)
-minimizeButton.BackgroundColor3 = colors.warning
-minimizeButton.BorderSizePixel = 0
-minimizeButton.Text = "_"
-minimizeButton.TextColor3 = colors.text
-minimizeButton.Font = Enum.Font.GothamBold
-minimizeButton.TextSize = 18
-minimizeButton.Parent = titleBar
-
--- Hacer el botón circular
-local minimizeCorner = Instance.new("UICorner")
-minimizeCorner.CornerRadius = UDim.new(1, 0)
-minimizeCorner.Parent = minimizeButton
 
 -- Marco dividido
 local contentFrame = Instance.new("Frame")
@@ -463,7 +443,7 @@ function createSlider(name, description, parent, min, max, default, callback)
     sliderFill.Name = "SliderFill"
     sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
     sliderFill.Position = UDim2.new(0, 0, 0, 0)
-    sliderFill.BackgroundColor3 = colors.accent
+    sliderFill.BackgroundColor3 = colors.accept
     sliderFill.BorderSizePixel = 0
     sliderFill.Parent = sliderTrack
     
@@ -797,7 +777,35 @@ function applyWalkSpeed()
     end
 end
 
--- Main: Noclip
+-- Main: Jump Power (reemplaza Auto Jump)
+local jumpPowerSlider = createSlider("Jump Power", "Controla la fuerza de salto (50-200)", sectionFrames["Main"], 50, 200, 50, function(value)
+    RBXWix.JumpPowerValue = value
+    if RBXWix.JumpPowerEnabled then
+        applyJumpPower()
+    end
+end)
+
+local jumpPowerToggle = createToggle("Jump Power", "Activa/desactiva la fuerza de salto mejorada", sectionFrames["Main"], function(state)
+    RBXWix.JumpPowerEnabled = state
+    applyJumpPower()
+end)
+
+-- Función para aplicar jump power
+function applyJumpPower()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if RBXWix.JumpPowerEnabled then
+                humanoid.JumpPower = RBXWix.JumpPowerValue
+            else
+                humanoid.JumpPower = 50
+            end
+        end
+    end
+end
+
+-- Main: Noclip mejorado
 local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos", sectionFrames["Main"], function(state)
     RBXWix.NoclipEnabled = state
     if state then
@@ -807,14 +815,17 @@ local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos
     end
 end)
 
--- Función para habilitar noclip
+-- Función para habilitar noclip mejorado
 function enableNoclip()
     local character = player.Character
     if not character then return end
     
+    -- Desactivar colisión para todas las partes existentes
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
+            part.Velocity = Vector3.new(0, 0, 0)
+            part.RotVelocity = Vector3.new(0, 0, 0)
         end
     end
     
@@ -822,6 +833,8 @@ function enableNoclip()
     RBXWix.NoclipConnections.character = character.DescendantAdded:Connect(function(descendant)
         if descendant:IsA("BasePart") then
             descendant.CanCollide = false
+            descendant.Velocity = Vector3.new(0, 0, 0)
+            descendant.RotVelocity = Vector3.new(0, 0, 0)
         end
     end)
 end
@@ -843,7 +856,7 @@ function disableNoclip()
     end
 end
 
--- World: Fullbright CORREGIDO
+-- World: Fullbright
 local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación global para ver en la oscuridad", sectionFrames["World"], function(state)
     RBXWix.FullbrightEnabled = state
     if state then
@@ -876,15 +889,31 @@ local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación glob
     end
 end)
 
--- Main: Auto Jump (con tecla N por defecto)
-local autoJumpToggle = createToggle("Auto Jump", "Salta automáticamente cuando se presiona la tecla configurada", sectionFrames["Main"], function(state)
-    RBXWix.JumpLoopEnabled = state
-end)
-
--- Botón para cambiar tecla de salto
-local jumpKeyButton = createKeybindButton("Jump Key", "Tecla para activar el salto automático", sectionFrames["Main"], RBXWix.JumpKey, function(newKey)
-    RBXWix.JumpKey = newKey
-    jumpKeyButton.Update(newKey)
+-- World: Fog
+local fogToggle = createToggle("Fog", "Elimina la niebla y oscuridad del entorno", sectionFrames["World"], function(state)
+    RBXWix.FogEnabled = state
+    if state then
+        -- Guardar configuración original de fog
+        if not RBXWix.OriginalFog then
+            RBXWix.OriginalFog = {
+                FogStart = Lighting.FogStart,
+                FogEnd = Lighting.FogEnd,
+                FogColor = Lighting.FogColor
+            }
+        end
+        
+        -- Eliminar la niebla
+        Lighting.FogStart = 0
+        Lighting.FogEnd = 100000
+        Lighting.FogColor = Color3.fromRGB(255, 255, 255)
+    else
+        -- Restaurar configuración original
+        if RBXWix.OriginalFog then
+            Lighting.FogStart = RBXWix.OriginalFog.FogStart
+            Lighting.FogEnd = RBXWix.OriginalFog.FogEnd
+            Lighting.FogColor = RBXWix.OriginalFog.FogColor
+        end
+    end
 end)
 
 -- Players: ESP con subopciones
@@ -914,7 +943,7 @@ local espDistanceOption = createESPOption("Mostrar Distancia", "Muestra la dista
     end
 end)
 
--- Misc: Open Menu (ahora es un botón, no un toggle)
+-- Misc: Open Menu
 local openMenuButton = createButton("Open Menu", "Cambia la tecla para abrir/cerrar el menú", sectionFrames["Misc"], function()
     -- Crear UI para cambiar tecla
     local keybindFrame = Instance.new("Frame")
@@ -947,410 +976,4 @@ local openMenuButton = createButton("Open Menu", "Cambia la tecla para abrir/cer
     -- Bordes redondeados solo en la parte superior
     local titleCorner = Instance.new("UICorner")
     titleCorner.CornerRadius = UDim.new(0, 12)
-    titleCorner.Parent = keybindTitle
-    
-    local keybindText = Instance.new("TextLabel")
-    keybindText.Size = UDim2.new(1, -20, 0, 40)
-    keybindText.Position = UDim2.new(0, 10, 0, 50)
-    keybindText.BackgroundTransparency = 1
-    keybindText.Text = "Presione una tecla para asignar"
-    keybindText.TextColor3 = colors.text
-    keybindText.Font = Enum.Font.Gotham
-    keybindText.TextSize = 14
-    keybindText.ZIndex = 11
-    keybindText.Parent = keybindFrame
-    
-    local currentKeyText = Instance.new("TextLabel")
-    currentKeyText.Size = UDim2.new(1, -20, 0, 30)
-    currentKeyText.Position = UDim2.new(0, 10, 0, 90)
-    currentKeyText.BackgroundTransparency = 1
-    currentKeyText.Text = "Tecla actual: H"
-    currentKeyText.TextColor3 = colors.text
-    currentKeyText.Font = Enum.Font.Gotham
-    currentKeyText.TextSize = 14
-    currentKeyText.ZIndex = 11
-    currentKeyText.Parent = keybindFrame
-    
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 80, 0, 30)
-    closeBtn.Position = UDim2.new(0.5, -40, 1, -40)
-    closeBtn.BackgroundColor3 = colors.primary
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Text = "Cerrar"
-    closeBtn.TextColor3 = colors.text
-    closeBtn.Font = Enum.Font.Gotham
-    closeBtn.TextSize = 14
-    closeBtn.ZIndex = 11
-    closeBtn.Parent = keybindFrame
-    
-    -- Hacer botón redondo
-    local closeBtnCorner = Instance.new("UICorner")
-    closeBtnCorner.CornerRadius = UDim.new(0, 8)
-    closeBtnCorner.Parent = closeBtn
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        keybindFrame:Destroy()
-    end)
-    
-    local connection
-    connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
-            RBXWix.ToggleKey = input.KeyCode
-            currentKeyText.Text = "Tecla actual: " .. tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
-            wait(1)
-            keybindFrame:Destroy()
-            connection:Disconnect()
-        end
-    end)
-end)
-
--- Función para habilitar ESP mejorado
-function enableESP()
-    for _, otherPlayer in ipairs(Players:GetPlayers()) do
-        if otherPlayer ~= Players.LocalPlayer then
-            createESP(otherPlayer)
-        end
-    end
-    
-    Players.PlayerAdded:Connect(function(otherPlayer)
-        if RBXWix.ESPEnabled then
-            createESP(otherPlayer)
-        end
-    end)
-end
-
--- Función para deshabilitar ESP
-function disableESP()
-    for _, obj in pairs(RBXWix.ESPObjects) do
-        if obj then
-            obj:Destroy()
-        end
-    end
-    RBXWix.ESPObjects = {}
-end
-
--- Función mejorada para crear elementos ESP
-function createESP(otherPlayer)
-    local character = otherPlayer.Character
-    if not character then
-        return
-    end
-    
-    -- Esperar a que el personaje esté completamente cargado
-    if not character:FindFirstChild("HumanoidRootPart") then
-        otherPlayer.CharacterAdded:Wait()
-        character = otherPlayer.Character
-    end
-    
-    -- Buscar la parte principal (head o humanoidrootpart)
-    local head = character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
-    if not head then
-        return
-    end
-    
-    local espBillboard = Instance.new("BillboardGui")
-    espBillboard.Name = otherPlayer.Name .. "ESP"
-    espBillboard.Adornee = head
-    espBillboard.Size = UDim2.new(0, 200, 0, 80)
-    espBillboard.StudsOffset = Vector3.new(0, 3, 0)
-    espBillboard.AlwaysOnTop = true
-    espBillboard.MaxDistance = 800
-    espBillboard.Parent = head
-    
-    local espFrame = Instance.new("Frame")
-    espFrame.Name = "ESPFrame"
-    espFrame.Size = UDim2.new(1, 0, 1, 0)
-    espFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    espFrame.BackgroundTransparency = 0.4
-    espFrame.BorderSizePixel = 0
-    espFrame.Parent = espBillboard
-    
-    -- Bordes redondeados
-    local espCorner = Instance.new("UICorner")
-    espCorner.CornerRadius = UDim.new(0, 8)
-    espCorner.Parent = espFrame
-    
-    local espText = Instance.new("TextLabel")
-    espText.Name = "ESPLabel"
-    espText.Size = UDim2.new(1, 0, 0.5, 0)
-    espText.Position = UDim2.new(0, 0, 0, 0)
-    espText.BackgroundTransparency = 1
-    espText.Text = otherPlayer.Name
-    espText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    espText.TextStrokeTransparency = 0
-    espText.TextSize = 16
-    espText.Font = Enum.Font.GothamBold
-    espText.Parent = espBillboard
-    
-    local infoText = Instance.new("TextLabel")
-    infoText.Name = "InfoLabel"
-    infoText.Size = UDim2.new(1, 0, 0.5, 0)
-    infoText.Position = UDim2.new(0, 0, 0.5, 0)
-    infoText.BackgroundTransparency = 1
-    infoText.Text = ""
-    infoText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    infoText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    infoText.TextStrokeTransparency = 0
-    infoText.TextSize = 14
-    infoText.Font = Enum.Font.Gotham
-    infoText.Parent = espBillboard
-    
-    RBXWix.ESPObjects[otherPlayer.Name] = espBillboard
-    
-    -- Actualizar información
-    local function updateInfo()
-        if not RBXWix.ESPEnabled or not character or not character.Parent then
-            return
-        end
-        
-        local info = ""
-        
-        -- Salud
-        if RBXWix.ESPHealth then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                info = info .. "Salud: " .. math.floor(humanoid.Health) .. "  "
-            end
-        end
-        
-        -- Distancia
-        if RBXWix.ESPDistance then
-            local localCharacter = player.Character
-            if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
-                local distance = (localCharacter.HumanoidRootPart.Position - head.Position).Magnitude
-                info = info .. "Dist: " .. math.floor(distance) .. "m"
-            end
-        end
-        
-        infoText.Text = info
-    end
-    
-    -- Conectar para actualizar información
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.HealthChanged:Connect(updateInfo)
-    end
-    
-    -- Actualizar continuamente la distancia
-    local updateConnection
-    updateConnection = RunService.Heartbeat:Connect(function()
-        if not RBXWix.ESPEnabled or not character or not character.Parent then
-            updateConnection:Disconnect()
-            return
-        end
-        updateInfo()
-    end)
-    
-    -- Detectar si el jugador se va
-    otherPlayer.AncestryChanged:Connect(function()
-        if not otherPlayer:IsDescendantOf(Players) and RBXWix.ESPObjects[otherPlayer.Name] then
-            RBXWix.ESPObjects[otherPlayer.Name]:Destroy()
-            RBXWix.ESPObjects[otherPlayer.Name] = nil
-            if updateConnection then
-                updateConnection:Disconnect()
-            end
-        end
-    end)
-end
-
--- Ajustar tamaño del canvas para cada sección
-for _, sectionFrame in pairs(sectionFrames) do
-    sectionFrame.Size = UDim2.new(1, 0, 0, sectionFrame.UIListLayout.AbsoluteContentSize.Y + 20)
-end
-
-contentPanel.ChildAdded:Connect(function()
-    for _, sectionFrame in pairs(sectionFrames) do
-        sectionFrame.Size = UDim2.new(1, 0, 0, sectionFrame.UIListLayout.AbsoluteContentSize.Y + 20)
-    end
-    contentPanel.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
-end)
-
--- Sistema de redimensionamiento mejorado
-local resizeCorners = {}
-local cornerNames = {"TopLeft", "TopRight", "BottomLeft", "BottomRight"}
-local cornerPositions = {
-    {Position = UDim2.new(0, -5, 0, -5), Cursor = "SizeNWSE"},
-    {Position = UDim2.new(1, -5, 0, -5), Cursor = "SizeNESW"},
-    {Position = UDim2.new(0, -5, 1, -5), Cursor = "SizeNESW"},
-    {Position = UDim2.new(1, -5, 1, -5), Cursor = "SizeNWSE"}
-}
-
-for i, cornerName in ipairs(cornerNames) do
-    local resizeCorner = Instance.new("ImageButton")
-    resizeCorner.Name = cornerName .. "Resize"
-    resizeCorner.Size = UDim2.new(0, 12, 0, 12)
-    resizeCorner.Position = cornerPositions[i].Position
-    resizeCorner.BackgroundTransparency = 1
-    resizeCorner.Image = "rbxassetid://5597081462"
-    resizeCorner.ImageColor3 = colors.accent
-    resizeCorner.ZIndex = 2
-    resizeCorner.Parent = mainFrame
-    
-    -- Hacer circular el botón de redimensionamiento
-    local resizeCornerCorner = Instance.new("UICorner")
-    resizeCornerCorner.CornerRadius = UDim.new(1, 0)
-    resizeCornerCorner.Parent = resizeCorner
-    
-    resizeCorner.MouseEnter:Connect(function()
-        UserInputService.MouseIcon = "rbxasset://SystemCursors/" .. cornerPositions[i].Cursor
-    end)
-    
-    resizeCorner.MouseLeave:Connect(function()
-        UserInputService.MouseIcon = ""
-    end)
-    
-    local isResizing = false
-    local startSize
-    local startPosition
-    
-    resizeCorner.MouseButton1Down:Connect(function()
-        isResizing = true
-        startSize = mainFrame.Size
-        startPosition = mainFrame.Position
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isResizing = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and isResizing then
-            local mouseDelta = Vector2.new(input.Position.X, input.Position.Y) - UserInputService:GetMouseLocation()
-            local newSize = UDim2.new(0, math.max(400, startSize.X.Offset + mouseDelta.X), 
-                                      0, math.max(300, startSize.Y.Offset + mouseDelta.Y))
-            mainFrame.Size = newSize
-        end
-    end)
-end
-
--- Funcionalidad para mover la ventana
-local isDragging = false
-local dragStart = nil
-local startPos = nil
-
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isDragging = true
-        dragStart = Vector2.new(input.Position.X, input.Position.Y)
-        startPos = mainFrame.Position
-        
-        -- Capturar el movimiento del mouse
-        local moveConnection
-        moveConnection = UserInputService.InputChanged:Connect(function(moveInput)
-            if moveInput.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
-                local delta = Vector2.new(moveInput.Position.X, moveInput.Position.Y) - dragStart
-                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
-                                              startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
-        end)
-        
-        -- Soltar cuando se suelta el mouse
-        local releaseConnection
-        releaseConnection = UserInputService.InputEnded:Connect(function(releaseInput)
-            if releaseInput.UserInputType == Enum.UserInputType.MouseButton1 then
-                isDragging = false
-                moveConnection:Disconnect()
-                releaseConnection:Disconnect()
-            end
-        end)
-    end
-end)
-
--- Botón de cerrar
-closeButton.MouseButton1Click:Connect(function()
-    toggleUI(false)
-end)
-
--- Botón de minimizar
-local isMinimized = false
-minimizeButton.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    if isMinimized then
-        TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 500, 0, 40)}):Play()
-        TweenService:Create(contentFrame, TweenInfo.new(0.3), {Visible = false}):Play()
-    else
-        TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 500, 0, 500)}):Play()
-        TweenService:Create(contentFrame, TweenInfo.new(0.3), {Visible = true}):Play()
-    end
-end)
-
--- Función para alternar la UI
-function toggleUI(state)
-    if state == nil then
-        state = not RBXWix.Enabled
-    end
-    
-    RBXWix.Enabled = state
-    mainFrame.Visible = state
-    backgroundFrame.Visible = state
-    
-    if state and isMinimized then
-        isMinimized = false
-        mainFrame.Size = UDim2.new(0, 500, 0, 500)
-        contentFrame.Visible = true
-    end
-end
-
--- Detectar tecla para abrir/cerrar menú
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
-        toggleUI()
-    end
-end)
-
--- Función para salto automático con tecla configurable
-RunService.Heartbeat:Connect(function()
-    if RBXWix.JumpLoopEnabled and UserInputService:IsKeyDown(RBXWix.JumpKey) then
-        local character = player.Character
-        if character then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
-                humanoid.Jump = true
-            end
-        end
-    end
-end)
-
--- Función para walkspeed (se aplica cada segundo)
-local lastWalkSpeedUpdate = 0
-RunService.Heartbeat:Connect(function()
-    if tick() - lastWalkSpeedUpdate >= 1 then
-        lastWalkSpeedUpdate = tick()
-        if RBXWix.WalkSpeedEnabled then
-            applyWalkSpeed()
-        end
-    end
-end)
-
--- Función para noclip (se aplica continuamente)
-RunService.Stepped:Connect(function()
-    if RBXWix.NoclipEnabled then
-        local character = player.Character
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end
-end)
-
--- Conectar eventos de personaje para aplicar walkspeed y noclip
-player.CharacterAdded:Connect(function(character)
-    wait(0.5) -- Esperar a que el personaje se estabilice
-    
-    if RBXWix.WalkSpeedEnabled then
-        applyWalkSpeed()
-    end
-    
-    if RBXWix.NoclipEnabled then
-        enableNoclip()
-    end
-end)
-
--- Mensaje de confirmación
-print("RBX Wix UI Premium cargado correctamente. Presiona H para abrir/cerrar el menú.")
+    titleCorner.P
