@@ -114,6 +114,9 @@ contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 contentLayout.Padding = UDim.new(0, 10)
 
+-- Almacenar todas las conexiones para limpiarlas después
+local connections = {}
+
 -- Función para crear toggles
 function createToggle(name, description, default, callback)
     local toggleFrame = Instance.new("Frame")
@@ -167,7 +170,7 @@ function createToggle(name, description, default, callback)
     
     local status = default
     
-    toggleButton.MouseButton1Click:Connect(function()
+    local connection = toggleButton.MouseButton1Click:Connect(function()
         status = not status
         if status then
             toggleButton.BackgroundColor3 = colors.toggleOn
@@ -178,6 +181,8 @@ function createToggle(name, description, default, callback)
             callback(status)
         end
     end)
+    
+    table.insert(connections, connection)
     
     return {
         Set = function(value)
@@ -297,19 +302,17 @@ function createSlider(name, description, min, max, default, callback)
         end
     end
     
-    sliderButton.MouseButton1Down:Connect(function()
+    local connection1 = sliderButton.MouseButton1Down:Connect(function()
         isSliding = true
     end)
     
-    local inputEndedConnection
-    inputEndedConnection = UserInputService.InputEnded:Connect(function(input)
+    local connection2 = UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isSliding = false
         end
     end)
     
-    local inputChangedConnection
-    inputChangedConnection = UserInputService.InputChanged:Connect(function(input)
+    local connection3 = UserInputService.InputChanged:Connect(function(input)
         if isSliding and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mousePos = UserInputService:GetMouseLocation()
             local trackPos = sliderTrack.AbsolutePosition
@@ -320,7 +323,7 @@ function createSlider(name, description, min, max, default, callback)
         end
     end)
     
-    sliderTrack.InputBegan:Connect(function(input)
+    local connection4 = sliderTrack.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local mousePos = UserInputService:GetMouseLocation()
             local trackPos = sliderTrack.AbsolutePosition
@@ -330,6 +333,11 @@ function createSlider(name, description, min, max, default, callback)
             updateSlider(newValue)
         end
     end)
+    
+    table.insert(connections, connection1)
+    table.insert(connections, connection2)
+    table.insert(connections, connection3)
+    table.insert(connections, connection4)
     
     updateSlider(default)
     
@@ -391,11 +399,12 @@ local espToggle = createToggle("ESP", "Muestra información de jugadores", false
 end)
 
 -- Ajustar tamaño del contenido
-contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+local contentSizeConnection = contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     if contentFrame and contentLayout then
         contentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
     end
 end)
+table.insert(connections, contentSizeConnection)
 
 -- Funciones de gameplay con verificaciones de seguridad
 local function applyWalkSpeed()
@@ -449,8 +458,7 @@ local function disableNoclip()
 end
 
 -- Loop principal para aplicar las funciones
-local heartbeatConnection
-heartbeatConnection = RunService.Heartbeat:Connect(function()
+local heartbeatConnection = RunService.Heartbeat:Connect(function()
     if RBXWix.WalkSpeedEnabled then
         applyWalkSpeed()
     end
@@ -465,6 +473,7 @@ heartbeatConnection = RunService.Heartbeat:Connect(function()
         disableNoclip()
     end
 end)
+table.insert(connections, heartbeatConnection)
 
 -- Función para abrir/cerrar la interfaz
 local function toggleUI()
@@ -475,17 +484,18 @@ local function toggleUI()
 end
 
 -- Conectar eventos
-local inputBeganConnection
-inputBeganConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+local inputBeganConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
         toggleUI()
     end
 end)
+table.insert(connections, inputBeganConnection)
 
 if closeButton then
-    closeButton.MouseButton1Click:Connect(function()
+    local closeConnection = closeButton.MouseButton1Click:Connect(function()
         toggleUI()
     end)
+    table.insert(connections, closeConnection)
 end
 
 -- Arrastrar la ventana
@@ -502,51 +512,42 @@ local function update(input)
 end
 
 if titleBar then
-    titleBar.InputBegan:Connect(function(input)
+    local titleBarConnection1 = titleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
             startPos = mainFrame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
         end
     end)
+    table.insert(connections, titleBarConnection1)
 
-    titleBar.InputChanged:Connect(function(input)
+    local titleBarConnection2 = titleBar.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             dragInput = input
         end
     end)
+    table.insert(connections, titleBarConnection2)
 end
 
-UserInputService.InputChanged:Connect(function(input)
+local inputChangedConnection = UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         update(input)
     end
 end)
-
--- Mensaje de inicialización
-print("RBX Wix UI cargado correctamente. Presiona RightShift para abrir/cerrar el menú.")
+table.insert(connections, inputChangedConnection)
 
 -- Función de limpieza para evitar memory leaks
 local function cleanup()
-    if heartbeatConnection then
-        heartbeatConnection:Disconnect()
+    for _, connection in ipairs(connections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
     end
-    if inputBeganConnection then
-        inputBeganConnection:Disconnect()
-    end
-    if inputEndedConnection then
-        inputEndedConnection:Disconnect()
-    end
-    if inputChangedConnection then
-        inputChangedConnection:Disconnect()
-    end
+    connections = {}
 end
 
--- Conectar la limpieza cuando el script se destruye
-script.Destroying:Connect(cleanup)
+-- Conectar la limpieza cuando la GUI se destruye
+screenGui.Destroying:Connect(cleanup)
+
+-- Mensaje de inicialización
+print("RBX Wix UI cargado correctamente. Presiona RightShift para abrir/cerrar el menú.")
