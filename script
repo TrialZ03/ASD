@@ -1,4 +1,4 @@
--- RBX Wix UI - Interfaz Simplificada y Corregida
+-- RBX Wix UI - Interfaz Mejorada con ESP Funcional
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
@@ -26,8 +26,8 @@ local RBXWix = {
     JumpPowerValue = 50,
     NoclipEnabled = false,
     FullbrightEnabled = false,
-    FogEnabled = false,
-    ESPEnabled = false
+    ESPEnabled = false,
+    ESPObjects = {}
 }
 
 -- Colores
@@ -39,7 +39,9 @@ local colors = {
     toggleOff = Color3.fromRGB(80, 80, 80),
     card = Color3.fromRGB(30, 30, 35),
     header = Color3.fromRGB(25, 25, 30),
-    danger = Color3.fromRGB(244, 67, 54)
+    danger = Color3.fromRGB(244, 67, 54),
+    tabActive = Color3.fromRGB(0, 120, 215),
+    tabInactive = Color3.fromRGB(40, 40, 40)
 }
 
 -- Crear la interfaz principal
@@ -52,8 +54,8 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 -- Ventana principal
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 500, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+mainFrame.Size = UDim2.new(0, 550, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -275, 0.5, -225)
 mainFrame.BackgroundColor3 = colors.background
 mainFrame.BorderSizePixel = 0
 mainFrame.ClipsDescendants = true
@@ -78,7 +80,7 @@ titleText.Name = "TitleText"
 titleText.Size = UDim2.new(1, -60, 1, 0)
 titleText.Position = UDim2.new(0, 10, 0, 0)
 titleText.BackgroundTransparency = 1
-titleText.Text = "RBX Wix Menu"
+titleText.Text = "RBX Wix Premium"
 titleText.TextColor3 = colors.text
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Font = Enum.Font.GothamBold
@@ -97,11 +99,27 @@ closeButton.Font = Enum.Font.GothamBold
 closeButton.TextSize = 16
 closeButton.Parent = titleBar
 
+-- Barra de pestañas
+local tabContainer = Instance.new("Frame")
+tabContainer.Name = "TabContainer"
+tabContainer.Size = UDim2.new(1, 0, 0, 40)
+tabContainer.Position = UDim2.new(0, 0, 0, 30)
+tabContainer.BackgroundColor3 = colors.secondary
+tabContainer.BorderSizePixel = 0
+tabContainer.Parent = mainFrame
+
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.Parent = tabContainer
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+tabLayout.Padding = UDim.new(0, 5)
+
 -- Panel de contenido
 local contentFrame = Instance.new("ScrollingFrame")
 contentFrame.Name = "ContentFrame"
-contentFrame.Size = UDim2.new(1, 0, 1, -30)
-contentFrame.Position = UDim2.new(0, 0, 0, 30)
+contentFrame.Size = UDim2.new(1, 0, 1, -70)
+contentFrame.Position = UDim2.new(0, 0, 0, 70)
 contentFrame.BackgroundTransparency = 1
 contentFrame.ScrollBarThickness = 4
 contentFrame.ScrollBarImageColor3 = colors.accent
@@ -117,15 +135,82 @@ contentLayout.Padding = UDim.new(0, 10)
 -- Almacenar todas las conexiones para limpiarlas después
 local connections = {}
 
+-- Crear pestañas
+local tabs = {
+    {Name = "Movimiento", Icon = "🏃"},
+    {Name = "Visuales", Icon = "👁️"},
+    {Name = "Jugadores", Icon = "👥"},
+    {Name = "Utilidades", Icon = "🔧"}
+}
+
+local tabFrames = {}
+
+for i, tabData in ipairs(tabs) do
+    -- Botón de pestaña
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = tabData.Name .. "Tab"
+    tabButton.Size = UDim2.new(0, 120, 0, 30)
+    tabButton.BackgroundColor3 = colors.tabInactive
+    tabButton.BorderSizePixel = 0
+    tabButton.Text = tabData.Icon .. " " .. tabData.Name
+    tabButton.TextColor3 = colors.text
+    tabButton.Font = Enum.Font.Gotham
+    tabButton.TextSize = 12
+    tabButton.Parent = tabContainer
+    
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 5)
+    tabCorner.Parent = tabButton
+    
+    -- Frame de contenido de pestaña
+    local tabFrame = Instance.new("Frame")
+    tabFrame.Name = tabData.Name .. "Frame"
+    tabFrame.Size = UDim2.new(1, 0, 0, 0)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.Visible = i == 1
+    tabFrame.Parent = contentFrame
+    
+    local tabFrameLayout = Instance.new("UIListLayout")
+    tabFrameLayout.Parent = tabFrame
+    tabFrameLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    tabFrameLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabFrameLayout.Padding = UDim.new(0, 10)
+    
+    tabFrames[tabData.Name] = tabFrame
+    
+    -- Conectar evento de clic al botón de pestaña
+    tabButton.MouseButton1Click:Connect(function()
+        for tabName, frame in pairs(tabFrames) do
+            frame.Visible = (tabName == tabData.Name)
+        end
+        
+        -- Actualizar colores de pestañas
+        for _, btn in ipairs(tabContainer:GetChildren()) do
+            if btn:IsA("TextButton") then
+                if btn.Name == tabData.Name .. "Tab" then
+                    btn.BackgroundColor3 = colors.tabActive
+                else
+                    btn.BackgroundColor3 = colors.tabInactive
+                end
+            end
+        end
+    end)
+    
+    -- Establecer la primera pestaña como activa
+    if i == 1 then
+        tabButton.BackgroundColor3 = colors.tabActive
+    end
+end
+
 -- Función para crear toggles
-function createToggle(name, description, default, callback)
+function createToggle(name, description, default, parent, callback)
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = name .. "Toggle"
-    toggleFrame.Size = UDim2.new(0.9, 0, 0, 60)
+    toggleFrame.Size = UDim2.new(0.95, 0, 0, 60)
     toggleFrame.BackgroundColor3 = colors.card
     toggleFrame.BorderSizePixel = 0
-    toggleFrame.LayoutOrder = #contentFrame:GetChildren()
-    toggleFrame.Parent = contentFrame
+    toggleFrame.LayoutOrder = #parent:GetChildren()
+    toggleFrame.Parent = parent
     
     local frameCorner = Instance.new("UICorner")
     frameCorner.CornerRadius = UDim.new(0, 8)
@@ -200,14 +285,14 @@ function createToggle(name, description, default, callback)
 end
 
 -- Función para crear sliders
-function createSlider(name, description, min, max, default, callback)
+function createSlider(name, description, min, max, default, parent, callback)
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Name = name .. "Slider"
-    sliderFrame.Size = UDim2.new(0.9, 0, 0, 80)
+    sliderFrame.Size = UDim2.new(0.95, 0, 0, 80)
     sliderFrame.BackgroundColor3 = colors.card
     sliderFrame.BorderSizePixel = 0
-    sliderFrame.LayoutOrder = #contentFrame:GetChildren()
-    sliderFrame.Parent = contentFrame
+    sliderFrame.LayoutOrder = #parent:GetChildren()
+    sliderFrame.Parent = parent
     
     local frameCorner = Instance.new("UICorner")
     frameCorner.CornerRadius = UDim.new(0, 8)
@@ -351,28 +436,31 @@ function createSlider(name, description, min, max, default, callback)
     }
 end
 
--- Crear elementos de la interfaz
-local walkSpeedSlider = createSlider("WalkSpeed", "Controla la velocidad de movimiento", 16, 100, 25, function(value)
+-- Crear elementos de la interfaz por categorías
+
+-- Pestaña de Movimiento
+local walkSpeedSlider = createSlider("WalkSpeed", "Controla la velocidad de movimiento", 16, 100, 25, tabFrames.Movimiento, function(value)
     RBXWix.WalkSpeedValue = value
 end)
 
-local walkSpeedToggle = createToggle("WalkSpeed", "Activa/desactiva la velocidad de movimiento", false, function(state)
+local walkSpeedToggle = createToggle("WalkSpeed", "Activa/desactiva la velocidad de movimiento", false, tabFrames.Movimiento, function(state)
     RBXWix.WalkSpeedEnabled = state
 end)
 
-local jumpPowerSlider = createSlider("Jump Power", "Controla la fuerza de salto", 50, 200, 50, function(value)
+local jumpPowerSlider = createSlider("Jump Power", "Controla la fuerza de salto", 50, 200, 50, tabFrames.Movimiento, function(value)
     RBXWix.JumpPowerValue = value
 end)
 
-local jumpPowerToggle = createToggle("Jump Power", "Activa/desactiva la fuerza de salto", false, function(state)
+local jumpPowerToggle = createToggle("Jump Power", "Activa/desactiva la fuerza de salto", false, tabFrames.Movimiento, function(state)
     RBXWix.JumpPowerEnabled = state
 end)
 
-local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos", false, function(state)
+local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos", false, tabFrames.Movimiento, function(state)
     RBXWix.NoclipEnabled = state
 end)
 
-local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación global", false, function(state)
+-- Pestaña de Visuales
+local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación global", false, tabFrames.Visuales, function(state)
     RBXWix.FullbrightEnabled = state
     if state then
         Lighting.Brightness = 2
@@ -385,26 +473,120 @@ local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación glob
     end
 end)
 
-local fogToggle = createToggle("Fog", "Elimina la niebla del entorno", false, function(state)
-    RBXWix.FogEnabled = state
-    if state then
-        Lighting.FogEnd = 100000
-    else
-        Lighting.FogEnd = 1000
-    end
-end)
-
-local espToggle = createToggle("ESP", "Muestra información de jugadores", false, function(state)
+-- Pestaña de Jugadores
+local espToggle = createToggle("ESP", "Muestra información de jugadores", false, tabFrames.Jugadores, function(state)
     RBXWix.ESPEnabled = state
-end)
-
--- Ajustar tamaño del contenido
-local contentSizeConnection = contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    if contentFrame and contentLayout then
-        contentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+    if state then
+        enableESP()
+    else
+        disableESP()
     end
 end)
-table.insert(connections, contentSizeConnection)
+
+-- Funciones de ESP mejoradas
+function enableESP()
+    -- Limpiar ESP existente
+    disableESP()
+    
+    -- Crear ESP para cada jugador
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            createESP(otherPlayer.Character, otherPlayer.Name)
+        end
+    end
+    
+    -- Conectar para nuevos jugadores
+    local playerAddedConnection = Players.PlayerAdded:Connect(function(newPlayer)
+        local characterAddedConnection = newPlayer.CharacterAdded:Connect(function(character)
+            if RBXWix.ESPEnabled then
+                createESP(character, newPlayer.Name)
+            end
+        end)
+        
+        table.insert(connections, characterAddedConnection)
+    end)
+    
+    table.insert(connections, playerAddedConnection)
+end
+
+function disableESP()
+    for _, espObject in pairs(RBXWix.ESPObjects) do
+        if espObject and espObject:IsA("Instance") then
+            espObject:Destroy()
+        end
+    end
+    RBXWix.ESPObjects = {}
+end
+
+function createESP(character, playerName)
+    -- Esperar a que el personaje tenga partes
+    if not character:FindFirstChild("HumanoidRootPart") then
+        character:WaitForChild("HumanoidRootPart", 2)
+    end
+    
+    if not character:FindFirstChild("Head") then
+        character:WaitForChild("Head", 2)
+    end
+    
+    if not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then
+        return
+    end
+    
+    -- Crear highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = playerName .. "ESP"
+    highlight.Adornee = character
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+    
+    -- Crear billboard GUI para nombre y distancia
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = playerName .. "ESPInfo"
+    billboard.Adornee = character.Head
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = character
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = playerName
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 14
+    nameLabel.Parent = billboard
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.TextSize = 12
+    distanceLabel.Parent = billboard
+    
+    -- Actualizar distancia en tiempo real
+    local distanceLoop = RunService.Heartbeat:Connect(function()
+        if not character or not character:FindFirstChild("HumanoidRootPart") or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            distanceLoop:Disconnect()
+            return
+        end
+        
+        local distance = (character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+        distanceLabel.Text = string.format("Distancia: %.1f", distance)
+    end)
+    
+    table.insert(connections, distanceLoop)
+    table.insert(RBXWix.ESPObjects, highlight)
+    table.insert(RBXWix.ESPObjects, billboard)
+end
 
 -- Funciones de gameplay con verificaciones de seguridad
 local function applyWalkSpeed()
@@ -544,6 +726,9 @@ local function cleanup()
         end
     end
     connections = {}
+    
+    -- Limpiar ESP
+    disableESP()
 end
 
 -- Conectar la limpieza cuando la GUI se destruye
