@@ -1,0 +1,1356 @@
+-- RBX Wix UI - Interfaz Premium con Funciones Avanzadas
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+-- Esperar a que el PlayerGui exista
+if not player:FindFirstChild("PlayerGui") then
+    player:WaitForChild("PlayerGui")
+end
+
+-- Variables globales
+local RBXWix = {
+    Enabled = false,
+    ToggleKey = Enum.KeyCode.H,
+    FullbrightEnabled = false,
+    JumpLoopEnabled = false,
+    ESPEnabled = false,
+    WalkSpeedEnabled = false,
+    WalkSpeedValue = 25,
+    JumpKey = Enum.KeyCode.N,
+    NoclipEnabled = false,
+    ESPObjects = {},
+    ESPHealth = true,
+    ESPDistance = true,
+    NoclipConnections = {}
+}
+
+-- Colores modernos con tema azul oscuro premium
+local colors = {
+    primary = Color3.fromRGB(0, 120, 215),
+    secondary = Color3.fromRGB(40, 40, 40),
+    background = Color3.fromRGB(15, 15, 20),
+    text = Color3.fromRGB(240, 240, 240),
+    accent = Color3.fromRGB(0, 180, 255),
+    toggleOn = Color3.fromRGB(0, 200, 83),
+    toggleOff = Color3.fromRGB(80, 80, 80),
+    card = Color3.fromRGB(25, 25, 30),
+    header = Color3.fromRGB(20, 20, 25),
+    success = Color3.fromRGB(76, 175, 80),
+    warning = Color3.fromRGB(255, 193, 7),
+    danger = Color3.fromRGB(244, 67, 54)
+}
+
+-- Crear la interfaz principal
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RBXWixUI"
+screenGui.Parent = player.PlayerGui
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Crear la interfaz de fondo (para capturar el cursor)
+local backgroundFrame = Instance.new("Frame")
+backgroundFrame.Name = "BackgroundFrame"
+backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
+backgroundFrame.Position = UDim2.new(0, 0, 0, 0)
+backgroundFrame.BackgroundTransparency = 1
+backgroundFrame.Visible = false
+backgroundFrame.Active = true
+backgroundFrame.Parent = screenGui
+
+-- Crear la ventana principal con bordes redondeados y efecto de vidrio
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 500, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -250)
+mainFrame.BackgroundColor3 = colors.background
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+-- Añadir bordes redondeados
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 15)
+corner.Parent = mainFrame
+
+-- Efecto de vidrio (transparencia con blur)
+mainFrame.BackgroundTransparency = 0.05
+
+-- Sombra de la ventana mejorada
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.Size = UDim2.new(1, 25, 1, 25)
+shadow.Position = UDim2.new(0, -12, 0, -12)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://5554236805"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.8
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.ZIndex = -1
+shadow.Parent = mainFrame
+
+-- Barra de título con efecto de acrílico
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = colors.header
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 15)
+titleCorner.Parent = titleBar
+
+local titleText = Instance.new("TextLabel")
+titleText.Name = "TitleText"
+titleText.Size = UDim2.new(1, -90, 1, 0)
+titleText.Position = UDim2.new(0, 15, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "RBX Wix Premium"
+titleText.TextColor3 = colors.text
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Font = Enum.Font.GothamBold
+titleText.TextSize = 18
+titleText.Parent = titleBar
+
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 40, 0, 40)
+closeButton.Position = UDim2.new(1, -40, 0, 0)
+closeButton.BackgroundColor3 = colors.danger
+closeButton.BorderSizePixel = 0
+closeButton.Text = "X"
+closeButton.TextColor3 = colors.text
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 18
+closeButton.Parent = titleBar
+
+-- Hacer el botón circular
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.Parent = closeButton
+
+-- Botón de minimizar
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Size = UDim2.new(0, 40, 0, 40)
+minimizeButton.Position = UDim2.new(1, -80, 0, 0)
+minimizeButton.BackgroundColor3 = colors.warning
+minimizeButton.BorderSizePixel = 0
+minimizeButton.Text = "_"
+minimizeButton.TextColor3 = colors.text
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 18
+minimizeButton.Parent = titleBar
+
+-- Hacer el botón circular
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(1, 0)
+minimizeCorner.Parent = minimizeButton
+
+-- Marco dividido
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, 0, 1, -40)
+contentFrame.Position = UDim2.new(0, 0, 0, 40)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
+
+-- Panel lateral (secciones) con efecto de acrílico
+local sidePanel = Instance.new("ScrollingFrame")
+sidePanel.Name = "SidePanel"
+sidePanel.Size = UDim2.new(0, 160, 1, 0)
+sidePanel.Position = UDim2.new(0, 0, 0, 0)
+sidePanel.BackgroundColor3 = colors.secondary
+sidePanel.BackgroundTransparency = 0.1
+sidePanel.BorderSizePixel = 0
+sidePanel.ScrollBarThickness = 4
+sidePanel.ScrollBarImageColor3 = colors.accent
+sidePanel.CanvasSize = UDim2.new(0, 0, 0, 0)
+sidePanel.Parent = contentFrame
+
+local sideCorner = Instance.new("UICorner")
+sideCorner.CornerRadius = UDim.new(0, 15)
+sideCorner.Parent = sidePanel
+
+local uiListLayout = Instance.new("UIListLayout")
+uiListLayout.Parent = sidePanel
+uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+uiListLayout.Padding = UDim.new(0, 10)
+
+-- Panel de contenido
+local contentPanel = Instance.new("ScrollingFrame")
+contentPanel.Name = "ContentPanel"
+contentPanel.Size = UDim2.new(1, -165, 1, 0)
+contentPanel.Position = UDim2.new(0, 165, 0, 0)
+contentPanel.BackgroundTransparency = 1
+contentPanel.ScrollBarThickness = 4
+contentPanel.ScrollBarImageColor3 = colors.accent
+contentPanel.CanvasSize = UDim2.new(0, 0, 0, 0)
+contentPanel.Parent = contentFrame
+
+local contentLayout = Instance.new("UIListLayout")
+contentLayout.Parent = contentPanel
+contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+contentLayout.Padding = UDim.new(0, 15)
+
+-- Crear secciones
+local sections = {
+    {Name = "General", Desc = "Configuración general del menu", Icon = "⚙️"},
+    {Name = "World", Desc = "Ajustes del entorno y mundo", Icon = "🌎"},
+    {Name = "Main", Desc = "Funciones principales del script", Icon = "🚀"},
+    {Name = "Players", Desc = "Opciones relacionadas con jugadores", Icon = "👥"},
+    {Name = "Misc", Desc = "Otras funciones diversas", Icon = "🔧"}
+}
+
+local sectionFrames = {}
+
+for i, sectionData in ipairs(sections) do
+    -- Botón de sección con icono
+    local sectionButton = Instance.new("TextButton")
+    sectionButton.Name = sectionData.Name .. "Button"
+    sectionButton.Size = UDim2.new(0.9, 0, 0, 50)
+    sectionButton.BackgroundColor3 = colors.card
+    sectionButton.BorderSizePixel = 0
+    sectionButton.Text = " " .. sectionData.Icon .. "  " .. sectionData.Name
+    sectionButton.TextColor3 = colors.text
+    sectionButton.Font = Enum.Font.Gotham
+    sectionButton.TextSize = 14
+    sectionButton.TextXAlignment = Enum.TextXAlignment.Left
+    sectionButton.LayoutOrder = i
+    sectionButton.Parent = sidePanel
+    
+    -- Hacer botones redondeados
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 10)
+    buttonCorner.Parent = sectionButton
+    
+    -- Efecto hover en botones
+    sectionButton.MouseEnter:Connect(function()
+        TweenService:Create(sectionButton, TweenInfo.new(0.2), {BackgroundColor3 = colors.accent}):Play()
+    end)
+    
+    sectionButton.MouseLeave:Connect(function()
+        TweenService:Create(sectionButton, TweenInfo.new(0.2), {BackgroundColor3 = colors.card}):Play()
+    end)
+    
+    -- Frame de contenido de sección
+    local sectionFrame = Instance.new("Frame")
+    sectionFrame.Name = sectionData.Name .. "Frame"
+    sectionFrame.Size = UDim2.new(1, -20, 0, 0)
+    sectionFrame.BackgroundTransparency = 1
+    sectionFrame.Visible = false
+    sectionFrame.LayoutOrder = i
+    sectionFrame.Parent = contentPanel
+    
+    local sectionUIList = Instance.new("UIListLayout")
+    sectionUIList.Parent = sectionFrame
+    sectionUIList.SortOrder = Enum.SortOrder.LayoutOrder
+    sectionUIList.Padding = UDim.new(0, 15)
+    
+    -- Título de sección con icono
+    local sectionTitle = Instance.new("TextLabel")
+    sectionTitle.Name = "Title"
+    sectionTitle.Size = UDim2.new(1, 0, 0, 40)
+    sectionTitle.BackgroundTransparency = 1
+    sectionTitle.Text = sectionData.Icon .. "  " .. sectionData.Name
+    sectionTitle.TextColor3 = colors.text
+    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.TextSize = 22
+    sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sectionTitle.Parent = sectionFrame
+    
+    -- Descripción de sección
+    local sectionDesc = Instance.new("TextLabel")
+    sectionDesc.Name = "Description"
+    sectionDesc.Size = UDim2.new(1, 0, 0, 25)
+    sectionDesc.BackgroundTransparency = 1
+    sectionDesc.Text = sectionData.Desc
+    sectionDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    sectionDesc.Font = Enum.Font.Gotham
+    sectionDesc.TextSize = 14
+    sectionDesc.TextXAlignment = Enum.TextXAlignment.Left
+    sectionDesc.Parent = sectionFrame
+    
+    sectionFrames[sectionData.Name] = sectionFrame
+    
+    -- Conectar evento de clic al botón
+    sectionButton.MouseButton1Click:Connect(function()
+        for name, frame in pairs(sectionFrames) do
+            frame.Visible = (name == sectionData.Name)
+        end
+    end)
+end
+
+-- Ajustar tamaño del canvas del panel lateral
+sidePanel.CanvasSize = UDim2.new(0, 0, 0, #sections * 60)
+
+-- Mostrar la sección General por defecto
+sectionFrames["General"].Visible = true
+
+-- Función para crear interruptores modernos con forma circular
+function createToggle(name, description, parent, callback)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Name = name .. "Toggle"
+    toggleFrame.Size = UDim2.new(1, 0, 0, 80)
+    toggleFrame.BackgroundColor3 = colors.card
+    toggleFrame.BorderSizePixel = 0
+    toggleFrame.LayoutOrder = #parent:GetChildren()
+    toggleFrame.Parent = parent
+    
+    -- Bordes redondeados
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 12)
+    frameCorner.Parent = toggleFrame
+    
+    local toggleText = Instance.new("TextLabel")
+    toggleText.Name = "Text"
+    toggleText.Size = UDim2.new(0.7, -10, 0, 35)
+    toggleText.Position = UDim2.new(0, 15, 0, 10)
+    toggleText.BackgroundTransparency = 1
+    toggleText.Text = name
+    toggleText.TextColor3 = colors.text
+    toggleText.TextXAlignment = Enum.TextXAlignment.Left
+    toggleText.Font = Enum.Font.GothamBold
+    toggleText.TextSize = 18
+    toggleText.Parent = toggleFrame
+    
+    local toggleDesc = Instance.new("TextLabel")
+    toggleDesc.Name = "Description"
+    toggleDesc.Size = UDim2.new(0.7, -10, 0, 30)
+    toggleDesc.Position = UDim2.new(0, 15, 0, 45)
+    toggleDesc.BackgroundTransparency = 1
+    toggleDesc.Text = description
+    toggleDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    toggleDesc.TextXAlignment = Enum.TextXAlignment.Left
+    toggleDesc.Font = Enum.Font.Gotham
+    toggleDesc.TextSize = 14
+    toggleDesc.Parent = toggleFrame
+    
+    local toggleContainer = Instance.new("Frame")
+    toggleContainer.Name = "ToggleContainer"
+    toggleContainer.Size = UDim2.new(0, 55, 0, 26)
+    toggleContainer.Position = UDim2.new(1, -65, 0.5, -13)
+    toggleContainer.BackgroundColor3 = colors.toggleOff
+    toggleContainer.BorderSizePixel = 0
+    toggleContainer.Parent = toggleFrame
+    
+    -- Hacer el contenedor circular
+    local containerCorner = Instance.new("UICorner")
+    containerCorner.CornerRadius = UDim.new(1, 0)
+    containerCorner.Parent = toggleContainer
+    
+    local toggleKnob = Instance.new("Frame")
+    toggleKnob.Name = "ToggleKnob"
+    toggleKnob.Size = UDim2.new(0, 22, 0, 22)
+    toggleKnob.Position = UDim2.new(0, 2, 0, 2)
+    toggleKnob.BackgroundColor3 = colors.text
+    toggleKnob.BorderSizePixel = 0
+    toggleKnob.Parent = toggleContainer
+    
+    -- Hacer el knob circular
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(1, 0)
+    knobCorner.Parent = toggleKnob
+    
+    local status = false
+    
+    local function updateToggle()
+        if status then
+            TweenService:Create(toggleContainer, TweenInfo.new(0.2), {BackgroundColor3 = colors.toggleOn}):Play()
+            TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 31, 0, 2)}):Play()
+        else
+            TweenService:Create(toggleContainer, TweenInfo.new(0.2), {BackgroundColor3 = colors.toggleOff}):Play()
+            TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0, 2)}):Play()
+        end
+        if callback then
+            callback(status)
+        end
+    end
+    
+    toggleFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            status = not status
+            updateToggle()
+        end
+    end)
+    
+    return {
+        Set = function(value)
+            status = value
+            updateToggle()
+        end,
+        Get = function()
+            return status
+        end
+    }
+end
+
+-- Función para crear slider integrado con descripción
+function createSlider(name, description, parent, min, max, default, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = name .. "Slider"
+    sliderFrame.Size = UDim2.new(1, 0, 0, 100)
+    sliderFrame.BackgroundColor3 = colors.card
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.LayoutOrder = #parent:GetChildren()
+    sliderFrame.Parent = parent
+    
+    -- Bordes redondeados
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 12)
+    frameCorner.Parent = sliderFrame
+    
+    local sliderText = Instance.new("TextLabel")
+    sliderText.Name = "Text"
+    sliderText.Size = UDim2.new(0.7, -10, 0, 35)
+    sliderText.Position = UDim2.new(0, 15, 0, 10)
+    sliderText.BackgroundTransparency = 1
+    sliderText.Text = name
+    sliderText.TextColor3 = colors.text
+    sliderText.TextXAlignment = Enum.TextXAlignment.Left
+    sliderText.Font = Enum.Font.GothamBold
+    sliderText.TextSize = 18
+    sliderText.Parent = sliderFrame
+    
+    local valueText = Instance.new("TextLabel")
+    valueText.Name = "ValueText"
+    valueText.Size = UDim2.new(0.3, -10, 0, 35)
+    valueText.Position = UDim2.new(0.7, 0, 0, 10)
+    valueText.BackgroundTransparency = 1
+    valueText.Text = tostring(default)
+    valueText.TextColor3 = colors.text
+    valueText.TextXAlignment = Enum.TextXAlignment.Right
+    valueText.Font = Enum.Font.GothamBold
+    valueText.TextSize = 18
+    valueText.Parent = sliderFrame
+    
+    local sliderDesc = Instance.new("TextLabel")
+    sliderDesc.Name = "Description"
+    sliderDesc.Size = UDim2.new(1, -20, 0, 25)
+    sliderDesc.Position = UDim2.new(0, 15, 0, 45)
+    sliderDesc.BackgroundTransparency = 1
+    sliderDesc.Text = description
+    sliderDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    sliderDesc.TextXAlignment = Enum.TextXAlignment.Left
+    sliderDesc.Font = Enum.Font.Gotham
+    sliderDesc.TextSize = 14
+    sliderDesc.Parent = sliderFrame
+    
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Name = "SliderTrack"
+    sliderTrack.Size = UDim2.new(1, -30, 0, 8)
+    sliderTrack.Position = UDim2.new(0, 15, 1, -30)
+    sliderTrack.BackgroundColor3 = colors.toggleOff
+    sliderTrack.BorderSizePixel = 0
+    sliderTrack.Parent = sliderFrame
+    
+    -- Hacer la pista redondeada
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    trackCorner.Parent = sliderTrack
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = "SliderFill"
+    sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
+    sliderFill.Position = UDim2.new(0, 0, 0, 0)
+    sliderFill.BackgroundColor3 = colors.accent
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderTrack
+    
+    -- Hacer el relleno redondeado
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = sliderFill
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Name = "SliderButton"
+    sliderButton.Size = UDim2.new(0, 18, 0, 18)
+    sliderButton.Position = UDim2.new(0.5, -9, 0.5, -9)
+    sliderButton.BackgroundColor3 = colors.text
+    sliderButton.BorderSizePixel = 0
+    sliderButton.Text = ""
+    sliderButton.Parent = sliderTrack
+    
+    -- Hacer el botón circular
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(1, 0)
+    buttonCorner.Parent = sliderButton
+    
+    local value = default
+    local isSliding = false
+    
+    local function updateSlider(newValue)
+        value = math.clamp(newValue, min, max)
+        local percentage = (value - min) / (max - min)
+        
+        TweenService:Create(sliderFill, TweenInfo.new(0.1), {Size = UDim2.new(percentage, 0, 1, 0)}):Play()
+        TweenService:Create(sliderButton, TweenInfo.new(0.1), {Position = UDim2.new(percentage, -9, 0.5, -9)}):Play()
+        
+        valueText.Text = tostring(math.floor(value))
+        
+        if callback then
+            callback(value)
+        end
+    end
+    
+    sliderButton.MouseButton1Down:Connect(function()
+        isSliding = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isSliding = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if isSliding and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local trackPos = sliderTrack.AbsolutePosition
+            local trackSize = sliderTrack.AbsoluteSize
+            local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
+            local newValue = min + (max - min) * relativeX
+            updateSlider(newValue)
+        end
+    end)
+    
+    sliderTrack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mousePos = UserInputService:GetMouseLocation()
+            local trackPos = sliderTrack.AbsolutePosition
+            local trackSize = sliderTrack.AbsoluteSize
+            local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
+            local newValue = min + (max - min) * relativeX
+            updateSlider(newValue)
+        end
+    end)
+    
+    updateSlider(default)
+    
+    return {
+        Set = function(newValue)
+            updateSlider(newValue)
+        end,
+        Get = function()
+            return value
+        end
+    }
+end
+
+-- Función para crear botones de tecla
+function createKeybindButton(name, description, parent, currentKey, callback)
+    local keybindFrame = Instance.new("Frame")
+    keybindFrame.Name = name .. "Keybind"
+    keybindFrame.Size = UDim2.new(1, 0, 0, 80)
+    keybindFrame.BackgroundColor3 = colors.card
+    keybindFrame.BorderSizePixel = 0
+    keybindFrame.LayoutOrder = #parent:GetChildren()
+    keybindFrame.Parent = parent
+    
+    -- Bordes redondeados
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 12)
+    frameCorner.Parent = keybindFrame
+    
+    local keybindText = Instance.new("TextLabel")
+    keybindText.Name = "Text"
+    keybindText.Size = UDim2.new(0.7, -10, 0, 35)
+    keybindText.Position = UDim2.new(0, 15, 0, 10)
+    keybindText.BackgroundTransparency = 1
+    keybindText.Text = name
+    keybindText.TextColor3 = colors.text
+    keybindText.TextXAlignment = Enum.TextXAlignment.Left
+    keybindText.Font = Enum.Font.GothamBold
+    keybindText.TextSize = 18
+    keybindText.Parent = keybindFrame
+    
+    local keybindDesc = Instance.new("TextLabel")
+    keybindDesc.Name = "Description"
+    keybindDesc.Size = UDim2.new(0.7, -10, 0, 30)
+    keybindDesc.Position = UDim2.new(0, 15, 0, 45)
+    keybindDesc.BackgroundTransparency = 1
+    keybindDesc.Text = description
+    keybindDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    keybindDesc.TextXAlignment = Enum.TextXAlignment.Left
+    keybindDesc.Font = Enum.Font.Gotham
+    keybindDesc.TextSize = 14
+    keybindDesc.Parent = keybindFrame
+    
+    local keyButton = Instance.new("TextButton")
+    keyButton.Name = "KeyButton"
+    keyButton.Size = UDim2.new(0, 100, 0, 40)
+    keyButton.Position = UDim2.new(1, -110, 0.5, -20)
+    keyButton.BackgroundColor3 = colors.accent
+    keyButton.BorderSizePixel = 0
+    keyButton.Text = tostring(currentKey):gsub("Enum.KeyCode.", "")
+    keyButton.TextColor3 = colors.text
+    keyButton.Font = Enum.Font.GothamBold
+    keyButton.TextSize = 16
+    keyButton.Parent = keybindFrame
+    
+    -- Hacer el botón redondo
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 8)
+    buttonCorner.Parent = keyButton
+    
+    keyButton.MouseButton1Click:Connect(function()
+        keyButton.Text = "..."
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
+                keyButton.Text = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
+                callback(input.KeyCode)
+                connection:Disconnect()
+            end
+        end)
+    end)
+    
+    return {
+        Update = function(newKey)
+            keyButton.Text = tostring(newKey):gsub("Enum.KeyCode.", "")
+        end
+    }
+end
+
+-- Función para crear botones normales
+function createButton(name, description, parent, callback)
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Name = name .. "ButtonFrame"
+    buttonFrame.Size = UDim2.new(1, 0, 0, 80)
+    buttonFrame.BackgroundColor3 = colors.card
+    buttonFrame.BorderSizePixel = 0
+    buttonFrame.LayoutOrder = #parent:GetChildren()
+    buttonFrame.Parent = parent
+    
+    -- Bordes redondeados
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 12)
+    frameCorner.Parent = buttonFrame
+    
+    local buttonText = Instance.new("TextLabel")
+    buttonText.Name = "Text"
+    buttonText.Size = UDim2.new(0.7, -10, 0, 35)
+    buttonText.Position = UDim2.new(0, 15, 0, 10)
+    buttonText.BackgroundTransparency = 1
+    buttonText.Text = name
+    buttonText.TextColor3 = colors.text
+    buttonText.TextXAlignment = Enum.TextXAlignment.Left
+    buttonText.Font = Enum.Font.GothamBold
+    buttonText.TextSize = 18
+    buttonText.Parent = buttonFrame
+    
+    local buttonDesc = Instance.new("TextLabel")
+    buttonDesc.Name = "Description"
+    buttonDesc.Size = UDim2.new(0.7, -10, 0, 30)
+    buttonDesc.Position = UDim2.new(0, 15, 0, 45)
+    buttonDesc.BackgroundTransparency = 1
+    buttonDesc.Text = description
+    buttonDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    buttonDesc.TextXAlignment = Enum.TextXAlignment.Left
+    buttonDesc.Font = Enum.Font.Gotham
+    buttonDesc.TextSize = 14
+    buttonDesc.Parent = buttonFrame
+    
+    local actionButton = Instance.new("TextButton")
+    actionButton.Name = "ActionButton"
+    actionButton.Size = UDim2.new(0, 100, 0, 40)
+    actionButton.Position = UDim2.new(1, -110, 0.5, -20)
+    actionButton.BackgroundColor3 = colors.accent
+    actionButton.BorderSizePixel = 0
+    actionButton.Text = "Activar"
+    actionButton.TextColor3 = colors.text
+    actionButton.Font = Enum.Font.GothamBold
+    actionButton.TextSize = 16
+    actionButton.Parent = buttonFrame
+    
+    -- Hacer el botón redondo
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 8)
+    buttonCorner.Parent = actionButton
+    
+    actionButton.MouseButton1Click:Connect(function()
+        callback()
+    end)
+    
+    return actionButton
+end
+
+-- Función para crear opciones de ESP
+function createESPOption(name, description, parent, default, callback)
+    local optionFrame = Instance.new("Frame")
+    optionFrame.Name = name .. "Option"
+    optionFrame.Size = UDim2.new(1, 0, 0, 60)
+    optionFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    optionFrame.BorderSizePixel = 0
+    optionFrame.LayoutOrder = #parent:GetChildren()
+    optionFrame.Parent = parent
+    
+    -- Bordes redondeados
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 8)
+    frameCorner.Parent = optionFrame
+    
+    local optionText = Instance.new("TextLabel")
+    optionText.Name = "Text"
+    optionText.Size = UDim2.new(0.7, -10, 1, 0)
+    optionText.Position = UDim2.new(0, 15, 0, 0)
+    optionText.BackgroundTransparency = 1
+    optionText.Text = name
+    optionText.TextColor3 = colors.text
+    optionText.TextXAlignment = Enum.TextXAlignment.Left
+    optionText.Font = Enum.Font.Gotham
+    optionText.TextSize = 16
+    optionText.Parent = optionFrame
+    
+    local optionDesc = Instance.new("TextLabel")
+    optionDesc.Name = "Description"
+    optionDesc.Size = UDim2.new(0.7, -10, 0, 0)
+    optionDesc.Position = UDim2.new(0, 15, 0, 30)
+    optionDesc.BackgroundTransparency = 1
+    optionDesc.Text = description
+    optionDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    optionDesc.TextXAlignment = Enum.TextXAlignment.Left
+    optionDesc.Font = Enum.Font.Gotham
+    optionDesc.TextSize = 12
+    optionDesc.Parent = optionFrame
+    
+    local optionToggle = Instance.new("TextButton")
+    optionToggle.Name = "OptionToggle"
+    optionToggle.Size = UDim2.new(0, 40, 0, 20)
+    optionToggle.Position = UDim2.new(1, -50, 0.5, -10)
+    optionToggle.BackgroundColor3 = default and colors.toggleOn or colors.toggleOff
+    optionToggle.BorderSizePixel = 0
+    optionToggle.Text = ""
+    optionToggle.Parent = optionFrame
+    
+    -- Hacer el toggle redondo
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(1, 0)
+    toggleCorner.Parent = optionToggle
+    
+    local status = default
+    
+    optionToggle.MouseButton1Click:Connect(function()
+        status = not status
+        if status then
+            TweenService:Create(optionToggle, TweenInfo.new(0.2), {BackgroundColor3 = colors.toggleOn}):Play()
+        else
+            TweenService:Create(optionToggle, TweenInfo.new(0.2), {BackgroundColor3 = colors.toggleOff}):Play()
+        end
+        if callback then
+            callback(status)
+        end
+    end)
+    
+    return {
+        Set = function(value)
+            status = value
+            if status then
+                optionToggle.BackgroundColor3 = colors.toggleOn
+            else
+                optionToggle.BackgroundColor3 = colors.toggleOff
+            end
+        end,
+        Get = function()
+            return status
+        end
+    }
+end
+
+-- Añadir funciones a las secciones
+
+-- Main: WalkSpeed
+local walkSpeedSlider = createSlider("WalkSpeed", "Controla la velocidad de movimiento (16-100)", sectionFrames["Main"], 16, 100, 25, function(value)
+    RBXWix.WalkSpeedValue = value
+    if RBXWix.WalkSpeedEnabled then
+        applyWalkSpeed()
+    end
+end)
+
+local walkSpeedToggle = createToggle("WalkSpeed", "Activa/desactiva la velocidad de movimiento mejorada", sectionFrames["Main"], function(state)
+    RBXWix.WalkSpeedEnabled = state
+    applyWalkSpeed()
+end)
+
+-- Función para aplicar walkspeed (se ejecuta cada segundo)
+function applyWalkSpeed()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if RBXWix.WalkSpeedEnabled then
+                humanoid.WalkSpeed = RBXWix.WalkSpeedValue
+            else
+                humanoid.WalkSpeed = 16
+            end
+        end
+    end
+end
+
+-- Main: Noclip
+local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos", sectionFrames["Main"], function(state)
+    RBXWix.NoclipEnabled = state
+    if state then
+        enableNoclip()
+    else
+        disableNoclip()
+    end
+end)
+
+-- Función para habilitar noclip
+function enableNoclip()
+    local character = player.Character
+    if not character then return end
+    
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+    
+    -- Conectar para cuando se agreguen nuevas partes
+    RBXWix.NoclipConnections.character = character.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA("BasePart") then
+            descendant.CanCollide = false
+        end
+    end)
+end
+
+-- Función para deshabilitar noclip
+function disableNoclip()
+    if RBXWix.NoclipConnections.character then
+        RBXWix.NoclipConnections.character:Disconnect()
+        RBXWix.NoclipConnections.character = nil
+    end
+    
+    local character = player.Character
+    if not character then return end
+    
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+end
+
+-- World: Fullbright CORREGIDO
+local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación global para ver en la oscuridad", sectionFrames["World"], function(state)
+    RBXWix.FullbrightEnabled = state
+    if state then
+        -- Guardar configuración original
+        if not RBXWix.OriginalLighting then
+            RBXWix.OriginalLighting = {
+                Brightness = Lighting.Brightness,
+                ClockTime = Lighting.ClockTime,
+                GlobalShadows = Lighting.GlobalShadows,
+                OutdoorAmbient = Lighting.OutdoorAmbient,
+                FogEnd = Lighting.FogEnd
+            }
+        end
+        
+        -- Aplicar fullbright
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.FogEnd = 100000
+    else
+        -- Restaurar configuración original
+        if RBXWix.OriginalLighting then
+            Lighting.Brightness = RBXWix.OriginalLighting.Brightness
+            Lighting.ClockTime = RBXWix.OriginalLighting.ClockTime
+            Lighting.GlobalShadows = RBXWix.OriginalLighting.GlobalShadows
+            Lighting.OutdoorAmbient = RBXWix.OriginalLighting.OutdoorAmbient
+            Lighting.FogEnd = RBXWix.OriginalLighting.FogEnd
+        end
+    end
+end)
+
+-- Main: Auto Jump (con tecla N por defecto)
+local autoJumpToggle = createToggle("Auto Jump", "Salta automáticamente cuando se presiona la tecla configurada", sectionFrames["Main"], function(state)
+    RBXWix.JumpLoopEnabled = state
+end)
+
+-- Botón para cambiar tecla de salto
+local jumpKeyButton = createKeybindButton("Jump Key", "Tecla para activar el salto automático", sectionFrames["Main"], RBXWix.JumpKey, function(newKey)
+    RBXWix.JumpKey = newKey
+    jumpKeyButton.Update(newKey)
+end)
+
+-- Players: ESP con subopciones
+local espToggle = createToggle("ESP", "Muestra información de jugadores dentro de un radio de 800m", sectionFrames["Players"], function(state)
+    RBXWix.ESPEnabled = state
+    if state then
+        enableESP()
+    else
+        disableESP()
+    end
+end)
+
+-- Subopciones de ESP
+local espHealthOption = createESPOption("Mostrar Salud", "Muestra la barra de salud de los jugadores", sectionFrames["Players"], true, function(state)
+    RBXWix.ESPHealth = state
+    if RBXWix.ESPEnabled then
+        disableESP()
+        enableESP()
+    end
+end)
+
+local espDistanceOption = createESPOption("Mostrar Distancia", "Muestra la distancia a los jugadores", sectionFrames["Players"], true, function(state)
+    RBXWix.ESPDistance = state
+    if RBXWix.ESPEnabled then
+        disableESP()
+        enableESP()
+    end
+end)
+
+-- Misc: Open Menu (ahora es un botón, no un toggle)
+local openMenuButton = createButton("Open Menu", "Cambia la tecla para abrir/cerrar el menú", sectionFrames["Misc"], function()
+    -- Crear UI para cambiar tecla
+    local keybindFrame = Instance.new("Frame")
+    keybindFrame.Name = "KeybindFrame"
+    keybindFrame.Size = UDim2.new(0, 300, 0, 150)
+    keybindFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    keybindFrame.BackgroundColor3 = colors.card
+    keybindFrame.BorderSizePixel = 0
+    keybindFrame.ZIndex = 10
+    keybindFrame.Visible = true
+    keybindFrame.Parent = screenGui
+    
+    -- Bordes redondeados
+    local keybindCorner = Instance.new("UICorner")
+    keybindCorner.CornerRadius = UDim.new(0, 12)
+    keybindCorner.Parent = keybindFrame
+    
+    local keybindTitle = Instance.new("TextLabel")
+    keybindTitle.Size = UDim2.new(1, 0, 0, 40)
+    keybindTitle.Position = UDim2.new(0, 0, 0, 0)
+    keybindTitle.BackgroundColor3 = colors.primary
+    keybindTitle.BorderSizePixel = 0
+    keybindTitle.Text = "Cambiar Tecla"
+    keybindTitle.TextColor3 = colors.text
+    keybindTitle.Font = Enum.Font.GothamBold
+    keybindTitle.TextSize = 16
+    keybindTitle.ZIndex = 11
+    keybindTitle.Parent = keybindFrame
+    
+    -- Bordes redondeados solo en la parte superior
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 12)
+    titleCorner.Parent = keybindTitle
+    
+    local keybindText = Instance.new("TextLabel")
+    keybindText.Size = UDim2.new(1, -20, 0, 40)
+    keybindText.Position = UDim2.new(0, 10, 0, 50)
+    keybindText.BackgroundTransparency = 1
+    keybindText.Text = "Presione una tecla para asignar"
+    keybindText.TextColor3 = colors.text
+    keybindText.Font = Enum.Font.Gotham
+    keybindText.TextSize = 14
+    keybindText.ZIndex = 11
+    keybindText.Parent = keybindFrame
+    
+    local currentKeyText = Instance.new("TextLabel")
+    currentKeyText.Size = UDim2.new(1, -20, 0, 30)
+    currentKeyText.Position = UDim2.new(0, 10, 0, 90)
+    currentKeyText.BackgroundTransparency = 1
+    currentKeyText.Text = "Tecla actual: H"
+    currentKeyText.TextColor3 = colors.text
+    currentKeyText.Font = Enum.Font.Gotham
+    currentKeyText.TextSize = 14
+    currentKeyText.ZIndex = 11
+    currentKeyText.Parent = keybindFrame
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 80, 0, 30)
+    closeBtn.Position = UDim2.new(0.5, -40, 1, -40)
+    closeBtn.BackgroundColor3 = colors.primary
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "Cerrar"
+    closeBtn.TextColor3 = colors.text
+    closeBtn.Font = Enum.Font.Gotham
+    closeBtn.TextSize = 14
+    closeBtn.ZIndex = 11
+    closeBtn.Parent = keybindFrame
+    
+    -- Hacer botón redondo
+    local closeBtnCorner = Instance.new("UICorner")
+    closeBtnCorner.CornerRadius = UDim.new(0, 8)
+    closeBtnCorner.Parent = closeBtn
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        keybindFrame:Destroy()
+    end)
+    
+    local connection
+    connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
+            RBXWix.ToggleKey = input.KeyCode
+            currentKeyText.Text = "Tecla actual: " .. tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
+            wait(1)
+            keybindFrame:Destroy()
+            connection:Disconnect()
+        end
+    end)
+end)
+
+-- Función para habilitar ESP mejorado
+function enableESP()
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= Players.LocalPlayer then
+            createESP(otherPlayer)
+        end
+    end
+    
+    Players.PlayerAdded:Connect(function(otherPlayer)
+        if RBXWix.ESPEnabled then
+            createESP(otherPlayer)
+        end
+    end)
+end
+
+-- Función para deshabilitar ESP
+function disableESP()
+    for _, obj in pairs(RBXWix.ESPObjects) do
+        if obj then
+            obj:Destroy()
+        end
+    end
+    RBXWix.ESPObjects = {}
+end
+
+-- Función mejorada para crear elementos ESP
+function createESP(otherPlayer)
+    local character = otherPlayer.Character
+    if not character then
+        return
+    end
+    
+    -- Esperar a que el personaje esté completamente cargado
+    if not character:FindFirstChild("HumanoidRootPart") then
+        otherPlayer.CharacterAdded:Wait()
+        character = otherPlayer.Character
+    end
+    
+    -- Buscar la parte principal (head o humanoidrootpart)
+    local head = character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
+    if not head then
+        return
+    end
+    
+    local espBillboard = Instance.new("BillboardGui")
+    espBillboard.Name = otherPlayer.Name .. "ESP"
+    espBillboard.Adornee = head
+    espBillboard.Size = UDim2.new(0, 200, 0, 80)
+    espBillboard.StudsOffset = Vector3.new(0, 3, 0)
+    espBillboard.AlwaysOnTop = true
+    espBillboard.MaxDistance = 800
+    espBillboard.Parent = head
+    
+    local espFrame = Instance.new("Frame")
+    espFrame.Name = "ESPFrame"
+    espFrame.Size = UDim2.new(1, 0, 1, 0)
+    espFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    espFrame.BackgroundTransparency = 0.4
+    espFrame.BorderSizePixel = 0
+    espFrame.Parent = espBillboard
+    
+    -- Bordes redondeados
+    local espCorner = Instance.new("UICorner")
+    espCorner.CornerRadius = UDim.new(0, 8)
+    espCorner.Parent = espFrame
+    
+    local espText = Instance.new("TextLabel")
+    espText.Name = "ESPLabel"
+    espText.Size = UDim2.new(1, 0, 0.5, 0)
+    espText.Position = UDim2.new(0, 0, 0, 0)
+    espText.BackgroundTransparency = 1
+    espText.Text = otherPlayer.Name
+    espText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    espText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    espText.TextStrokeTransparency = 0
+    espText.TextSize = 16
+    espText.Font = Enum.Font.GothamBold
+    espText.Parent = espBillboard
+    
+    local infoText = Instance.new("TextLabel")
+    infoText.Name = "InfoLabel"
+    infoText.Size = UDim2.new(1, 0, 0.5, 0)
+    infoText.Position = UDim2.new(0, 0, 0.5, 0)
+    infoText.BackgroundTransparency = 1
+    infoText.Text = ""
+    infoText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    infoText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    infoText.TextStrokeTransparency = 0
+    infoText.TextSize = 14
+    infoText.Font = Enum.Font.Gotham
+    infoText.Parent = espBillboard
+    
+    RBXWix.ESPObjects[otherPlayer.Name] = espBillboard
+    
+    -- Actualizar información
+    local function updateInfo()
+        if not RBXWix.ESPEnabled or not character or not character.Parent then
+            return
+        end
+        
+        local info = ""
+        
+        -- Salud
+        if RBXWix.ESPHealth then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                info = info .. "Salud: " .. math.floor(humanoid.Health) .. "  "
+            end
+        end
+        
+        -- Distancia
+        if RBXWix.ESPDistance then
+            local localCharacter = player.Character
+            if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
+                local distance = (localCharacter.HumanoidRootPart.Position - head.Position).Magnitude
+                info = info .. "Dist: " .. math.floor(distance) .. "m"
+            end
+        end
+        
+        infoText.Text = info
+    end
+    
+    -- Conectar para actualizar información
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.HealthChanged:Connect(updateInfo)
+    end
+    
+    -- Actualizar continuamente la distancia
+    local updateConnection
+    updateConnection = RunService.Heartbeat:Connect(function()
+        if not RBXWix.ESPEnabled or not character or not character.Parent then
+            updateConnection:Disconnect()
+            return
+        end
+        updateInfo()
+    end)
+    
+    -- Detectar si el jugador se va
+    otherPlayer.AncestryChanged:Connect(function()
+        if not otherPlayer:IsDescendantOf(Players) and RBXWix.ESPObjects[otherPlayer.Name] then
+            RBXWix.ESPObjects[otherPlayer.Name]:Destroy()
+            RBXWix.ESPObjects[otherPlayer.Name] = nil
+            if updateConnection then
+                updateConnection:Disconnect()
+            end
+        end
+    end)
+end
+
+-- Ajustar tamaño del canvas para cada sección
+for _, sectionFrame in pairs(sectionFrames) do
+    sectionFrame.Size = UDim2.new(1, 0, 0, sectionFrame.UIListLayout.AbsoluteContentSize.Y + 20)
+end
+
+contentPanel.ChildAdded:Connect(function()
+    for _, sectionFrame in pairs(sectionFrames) do
+        sectionFrame.Size = UDim2.new(1, 0, 0, sectionFrame.UIListLayout.AbsoluteContentSize.Y + 20)
+    end
+    contentPanel.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+end)
+
+-- Sistema de redimensionamiento mejorado
+local resizeCorners = {}
+local cornerNames = {"TopLeft", "TopRight", "BottomLeft", "BottomRight"}
+local cornerPositions = {
+    {Position = UDim2.new(0, -5, 0, -5), Cursor = "SizeNWSE"},
+    {Position = UDim2.new(1, -5, 0, -5), Cursor = "SizeNESW"},
+    {Position = UDim2.new(0, -5, 1, -5), Cursor = "SizeNESW"},
+    {Position = UDim2.new(1, -5, 1, -5), Cursor = "SizeNWSE"}
+}
+
+for i, cornerName in ipairs(cornerNames) do
+    local resizeCorner = Instance.new("ImageButton")
+    resizeCorner.Name = cornerName .. "Resize"
+    resizeCorner.Size = UDim2.new(0, 12, 0, 12)
+    resizeCorner.Position = cornerPositions[i].Position
+    resizeCorner.BackgroundTransparency = 1
+    resizeCorner.Image = "rbxassetid://5597081462"
+    resizeCorner.ImageColor3 = colors.accent
+    resizeCorner.ZIndex = 2
+    resizeCorner.Parent = mainFrame
+    
+    -- Hacer circular el botón de redimensionamiento
+    local resizeCornerCorner = Instance.new("UICorner")
+    resizeCornerCorner.CornerRadius = UDim.new(1, 0)
+    resizeCornerCorner.Parent = resizeCorner
+    
+    resizeCorner.MouseEnter:Connect(function()
+        UserInputService.MouseIcon = "rbxasset://SystemCursors/" .. cornerPositions[i].Cursor
+    end)
+    
+    resizeCorner.MouseLeave:Connect(function()
+        UserInputService.MouseIcon = ""
+    end)
+    
+    local isResizing = false
+    local startSize
+    local startPosition
+    
+    resizeCorner.MouseButton1Down:Connect(function()
+        isResizing = true
+        startSize = mainFrame.Size
+        startPosition = mainFrame.Position
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isResizing = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and isResizing then
+            local mouseDelta = Vector2.new(input.Position.X, input.Position.Y) - UserInputService:GetMouseLocation()
+            local newSize = UDim2.new(0, math.max(400, startSize.X.Offset + mouseDelta.X), 
+                                      0, math.max(300, startSize.Y.Offset + mouseDelta.Y))
+            mainFrame.Size = newSize
+        end
+    end)
+end
+
+-- Funcionalidad para mover la ventana
+local isDragging = false
+local dragStart = nil
+local startPos = nil
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isDragging = true
+        dragStart = Vector2.new(input.Position.X, input.Position.Y)
+        startPos = mainFrame.Position
+        
+        -- Capturar el movimiento del mouse
+        local moveConnection
+        moveConnection = UserInputService.InputChanged:Connect(function(moveInput)
+            if moveInput.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
+                local delta = Vector2.new(moveInput.Position.X, moveInput.Position.Y) - dragStart
+                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
+                                              startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+        
+        -- Soltar cuando se suelta el mouse
+        local releaseConnection
+        releaseConnection = UserInputService.InputEnded:Connect(function(releaseInput)
+            if releaseInput.UserInputType == Enum.UserInputType.MouseButton1 then
+                isDragging = false
+                moveConnection:Disconnect()
+                releaseConnection:Disconnect()
+            end
+        end)
+    end
+end)
+
+-- Botón de cerrar
+closeButton.MouseButton1Click:Connect(function()
+    toggleUI(false)
+end)
+
+-- Botón de minimizar
+local isMinimized = false
+minimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 500, 0, 40)}):Play()
+        TweenService:Create(contentFrame, TweenInfo.new(0.3), {Visible = false}):Play()
+    else
+        TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 500, 0, 500)}):Play()
+        TweenService:Create(contentFrame, TweenInfo.new(0.3), {Visible = true}):Play()
+    end
+end)
+
+-- Función para alternar la UI
+function toggleUI(state)
+    if state == nil then
+        state = not RBXWix.Enabled
+    end
+    
+    RBXWix.Enabled = state
+    mainFrame.Visible = state
+    backgroundFrame.Visible = state
+    
+    if state and isMinimized then
+        isMinimized = false
+        mainFrame.Size = UDim2.new(0, 500, 0, 500)
+        contentFrame.Visible = true
+    end
+end
+
+-- Detectar tecla para abrir/cerrar menú
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
+        toggleUI()
+    end
+end)
+
+-- Función para salto automático con tecla configurable
+RunService.Heartbeat:Connect(function()
+    if RBXWix.JumpLoopEnabled and UserInputService:IsKeyDown(RBXWix.JumpKey) then
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
+                humanoid.Jump = true
+            end
+        end
+    end
+end)
+
+-- Función para walkspeed (se aplica cada segundo)
+local lastWalkSpeedUpdate = 0
+RunService.Heartbeat:Connect(function()
+    if tick() - lastWalkSpeedUpdate >= 1 then
+        lastWalkSpeedUpdate = tick()
+        if RBXWix.WalkSpeedEnabled then
+            applyWalkSpeed()
+        end
+    end
+end)
+
+-- Función para noclip (se aplica continuamente)
+RunService.Stepped:Connect(function()
+    if RBXWix.NoclipEnabled then
+        local character = player.Character
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- Conectar eventos de personaje para aplicar walkspeed y noclip
+player.CharacterAdded:Connect(function(character)
+    wait(0.5) -- Esperar a que el personaje se estabilice
+    
+    if RBXWix.WalkSpeedEnabled then
+        applyWalkSpeed()
+    end
+    
+    if RBXWix.NoclipEnabled then
+        enableNoclip()
+    end
+end)
+
+-- Mensaje de confirmación
+print("RBX Wix UI Premium cargado correctamente. Presiona H para abrir/cerrar el menú.")
