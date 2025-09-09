@@ -1,4 +1,4 @@
--- RBX Wix UI - Interfaz Mejorada con ESP Funcional
+-- RBX Wix UI - Interfaz Corregida con ESP Funcional
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
@@ -30,7 +30,7 @@ local RBXWix = {
     ESPObjects = {}
 }
 
--- Colores
+-- Colores (asegurarse de que todos estén definidos)
 local colors = {
     background = Color3.fromRGB(20, 20, 25),
     text = Color3.fromRGB(240, 240, 240),
@@ -41,7 +41,8 @@ local colors = {
     header = Color3.fromRGB(25, 25, 30),
     danger = Color3.fromRGB(244, 67, 54),
     tabActive = Color3.fromRGB(0, 120, 215),
-    tabInactive = Color3.fromRGB(40, 40, 40)
+    tabInactive = Color3.fromRGB(40, 40, 40),
+    secondary = Color3.fromRGB(40, 40, 40)
 }
 
 -- Crear la interfaz principal
@@ -144,6 +145,7 @@ local tabs = {
 }
 
 local tabFrames = {}
+local tabButtons = {}
 
 for i, tabData in ipairs(tabs) do
     -- Botón de pestaña
@@ -177,17 +179,20 @@ for i, tabData in ipairs(tabs) do
     tabFrameLayout.Padding = UDim.new(0, 10)
     
     tabFrames[tabData.Name] = tabFrame
+    tabButtons[tabData.Name] = tabButton
     
     -- Conectar evento de clic al botón de pestaña
     tabButton.MouseButton1Click:Connect(function()
         for tabName, frame in pairs(tabFrames) do
-            frame.Visible = (tabName == tabData.Name)
+            if frame then
+                frame.Visible = (tabName == tabData.Name)
+            end
         end
         
         -- Actualizar colores de pestañas
-        for _, btn in ipairs(tabContainer:GetChildren()) do
-            if btn:IsA("TextButton") then
-                if btn.Name == tabData.Name .. "Tab" then
+        for name, btn in pairs(tabButtons) do
+            if btn then
+                if name == tabData.Name then
                     btn.BackgroundColor3 = colors.tabActive
                 else
                     btn.BackgroundColor3 = colors.tabInactive
@@ -204,6 +209,11 @@ end
 
 -- Función para crear toggles
 function createToggle(name, description, default, parent, callback)
+    if not parent then
+        warn("Parent is nil for toggle: " .. name)
+        return
+    end
+    
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = name .. "Toggle"
     toggleFrame.Size = UDim2.new(0.95, 0, 0, 60)
@@ -257,10 +267,12 @@ function createToggle(name, description, default, parent, callback)
     
     local connection = toggleButton.MouseButton1Click:Connect(function()
         status = not status
-        if status then
-            toggleButton.BackgroundColor3 = colors.toggleOn
-        else
-            toggleButton.BackgroundColor3 = colors.toggleOff
+        if toggleButton then
+            if status then
+                toggleButton.BackgroundColor3 = colors.toggleOn
+            else
+                toggleButton.BackgroundColor3 = colors.toggleOff
+            end
         end
         if callback then
             callback(status)
@@ -272,10 +284,12 @@ function createToggle(name, description, default, parent, callback)
     return {
         Set = function(value)
             status = value
-            if status then
-                toggleButton.BackgroundColor3 = colors.toggleOn
-            else
-                toggleButton.BackgroundColor3 = colors.toggleOff
+            if toggleButton then
+                if status then
+                    toggleButton.BackgroundColor3 = colors.toggleOn
+                else
+                    toggleButton.BackgroundColor3 = colors.toggleOff
+                end
             end
         end,
         Get = function()
@@ -286,6 +300,11 @@ end
 
 -- Función para crear sliders
 function createSlider(name, description, min, max, default, parent, callback)
+    if not parent then
+        warn("Parent is nil for slider: " .. name)
+        return
+    end
+    
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Name = name .. "Slider"
     sliderFrame.Size = UDim2.new(0.95, 0, 0, 80)
@@ -378,9 +397,14 @@ function createSlider(name, description, min, max, default, parent, callback)
         value = math.clamp(newValue, min, max)
         local percentage = (value - min) / (max - min)
         
-        sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
-        sliderButton.Position = UDim2.new(percentage, -8, 0.5, -8)
-        valueText.Text = tostring(math.floor(value))
+        if sliderFill and sliderButton then
+            sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            sliderButton.Position = UDim2.new(percentage, -8, 0.5, -8)
+        end
+        
+        if valueText then
+            valueText.Text = tostring(math.floor(value))
+        end
         
         if callback then
             callback(value)
@@ -400,22 +424,26 @@ function createSlider(name, description, min, max, default, parent, callback)
     local connection3 = UserInputService.InputChanged:Connect(function(input)
         if isSliding and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mousePos = UserInputService:GetMouseLocation()
-            local trackPos = sliderTrack.AbsolutePosition
-            local trackSize = sliderTrack.AbsoluteSize
-            local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
-            local newValue = min + (max - min) * relativeX
-            updateSlider(newValue)
+            if sliderTrack then
+                local trackPos = sliderTrack.AbsolutePosition
+                local trackSize = sliderTrack.AbsoluteSize
+                local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
+                local newValue = min + (max - min) * relativeX
+                updateSlider(newValue)
+            end
         end
     end)
     
     local connection4 = sliderTrack.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local mousePos = UserInputService:GetMouseLocation()
-            local trackPos = sliderTrack.AbsolutePosition
-            local trackSize = sliderTrack.AbsoluteSize
-            local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
-            local newValue = min + (max - min) * relativeX
-            updateSlider(newValue)
+            if sliderTrack then
+                local trackPos = sliderTrack.AbsolutePosition
+                local trackSize = sliderTrack.AbsoluteSize
+                local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
+                local newValue = min + (max - min) * relativeX
+                updateSlider(newValue)
+            end
         end
     end)
     
@@ -490,8 +518,19 @@ function enableESP()
     
     -- Crear ESP para cada jugador
     for _, otherPlayer in ipairs(Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character then
-            createESP(otherPlayer.Character, otherPlayer.Name)
+        if otherPlayer ~= player then
+            if otherPlayer.Character then
+                createESP(otherPlayer.Character, otherPlayer.Name)
+            else
+                -- Esperar a que el jugador tenga un personaje
+                local connection; connection = otherPlayer.CharacterAdded:Connect(function(character)
+                    if RBXWix.ESPEnabled then
+                        createESP(character, otherPlayer.Name)
+                    end
+                    connection:Disconnect()
+                end)
+                table.insert(connections, connection)
+            end
         end
     end
     
@@ -521,11 +560,17 @@ end
 function createESP(character, playerName)
     -- Esperar a que el personaje tenga partes
     if not character:FindFirstChild("HumanoidRootPart") then
-        character:WaitForChild("HumanoidRootPart", 2)
+        local waitStart = tick()
+        while not character:FindFirstChild("HumanoidRootPart") and tick() - waitStart < 5 do
+            wait(0.1)
+        end
     end
     
     if not character:FindFirstChild("Head") then
-        character:WaitForChild("Head", 2)
+        local waitStart = tick()
+        while not character:FindFirstChild("Head") and tick() - waitStart < 5 do
+            wait(0.1)
+        end
     end
     
     if not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then
@@ -718,11 +763,21 @@ local inputChangedConnection = UserInputService.InputChanged:Connect(function(in
 end)
 table.insert(connections, inputChangedConnection)
 
+-- Ajustar tamaño del contenido
+if contentLayout then
+    local contentSizeConnection = contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        if contentFrame and contentLayout then
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+        end
+    end)
+    table.insert(connections, contentSizeConnection)
+end
+
 -- Función de limpieza para evitar memory leaks
 local function cleanup()
     for _, connection in ipairs(connections) do
         if connection and typeof(connection) == "RBXScriptConnection" then
-            connection:Disconnect()
+            pcall(function() connection:Disconnect() end)
         end
     end
     connections = {}
@@ -732,7 +787,9 @@ local function cleanup()
 end
 
 -- Conectar la limpieza cuando la GUI se destruye
-screenGui.Destroying:Connect(cleanup)
+if screenGui then
+    screenGui.Destroying:Connect(cleanup)
+end
 
 -- Mensaje de inicialización
 print("RBX Wix UI cargado correctamente. Presiona RightShift para abrir/cerrar el menú.")
