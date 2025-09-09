@@ -5,7 +5,18 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
+-- Verificar que el jugador existe
 local player = Players.LocalPlayer
+if not player then
+    warn("Player not found!")
+    return
+end
+
+-- Esperar a que el PlayerGui exista
+if not player:FindFirstChild("PlayerGui") then
+    player:WaitForChild("PlayerGui")
+end
+
 local RBXWix = {
     Enabled = false,
     ToggleKey = Enum.KeyCode.RightShift,
@@ -290,13 +301,15 @@ function createSlider(name, description, min, max, default, callback)
         isSliding = true
     end)
     
-    UserInputService.InputEnded:Connect(function(input)
+    local inputEndedConnection
+    inputEndedConnection = UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isSliding = false
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
+    local inputChangedConnection
+    inputChangedConnection = UserInputService.InputChanged:Connect(function(input)
         if isSliding and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mousePos = UserInputService:GetMouseLocation()
             local trackPos = sliderTrack.AbsolutePosition
@@ -379,10 +392,12 @@ end)
 
 -- Ajustar tamaño del contenido
 contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+    if contentFrame and contentLayout then
+        contentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+    end
 end)
 
--- Funciones de gameplay
+-- Funciones de gameplay con verificaciones de seguridad
 local function applyWalkSpeed()
     local character = player.Character
     if character then
@@ -434,7 +449,8 @@ local function disableNoclip()
 end
 
 -- Loop principal para aplicar las funciones
-RunService.Heartbeat:Connect(function()
+local heartbeatConnection
+heartbeatConnection = RunService.Heartbeat:Connect(function()
     if RBXWix.WalkSpeedEnabled then
         applyWalkSpeed()
     end
@@ -453,19 +469,24 @@ end)
 -- Función para abrir/cerrar la interfaz
 local function toggleUI()
     RBXWix.Enabled = not RBXWix.Enabled
-    mainFrame.Visible = RBXWix.Enabled
+    if mainFrame then
+        mainFrame.Visible = RBXWix.Enabled
+    end
 end
 
 -- Conectar eventos
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+local inputBeganConnection
+inputBeganConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
         toggleUI()
     end
 end)
 
-closeButton.MouseButton1Click:Connect(function()
-    toggleUI()
-end)
+if closeButton then
+    closeButton.MouseButton1Click:Connect(function()
+        toggleUI()
+    end)
+end
 
 -- Arrastrar la ventana
 local dragging = false
@@ -474,29 +495,33 @@ local dragStart
 local startPos
 
 local function update(input)
-    local delta = input.Position - dragStart
-    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    if mainFrame then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
 end
 
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
+if titleBar then
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
 
-titleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
+    titleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+end
 
 UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
@@ -506,3 +531,22 @@ end)
 
 -- Mensaje de inicialización
 print("RBX Wix UI cargado correctamente. Presiona RightShift para abrir/cerrar el menú.")
+
+-- Función de limpieza para evitar memory leaks
+local function cleanup()
+    if heartbeatConnection then
+        heartbeatConnection:Disconnect()
+    end
+    if inputBeganConnection then
+        inputBeganConnection:Disconnect()
+    end
+    if inputEndedConnection then
+        inputEndedConnection:Disconnect()
+    end
+    if inputChangedConnection then
+        inputChangedConnection:Disconnect()
+    end
+end
+
+-- Conectar la limpieza cuando el script se destruye
+script.Destroying:Connect(cleanup)
