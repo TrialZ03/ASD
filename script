@@ -66,8 +66,8 @@ backgroundFrame.Parent = screenGui
 -- Crear la ventana principal con bordes redondeados
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 500, 0, 500)
-mainFrame.Position = UDim2.new(0.5, -250, 0.5, -250)
+mainFrame.Size = UDim2.new(0, 550, 0, 600) -- Tamaño aumentado
+mainFrame.Position = UDim2.new(0.5, -275, 0.5, -300)
 mainFrame.BackgroundColor3 = colors.background
 mainFrame.BorderSizePixel = 0
 mainFrame.ClipsDescendants = true
@@ -93,7 +93,7 @@ shadow.SliceCenter = Rect.new(10, 10, 118, 118)
 shadow.ZIndex = -1
 shadow.Parent = mainFrame
 
--- Barra de título con efecto de acrílico
+-- Barra de título con efecto de acrílico y capacidad de arrastre
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
 titleBar.Size = UDim2.new(1, 0, 0, 40)
@@ -118,6 +118,25 @@ titleText.Font = Enum.Font.GothamBold
 titleText.TextSize = 18
 titleText.Parent = titleBar
 
+-- Botón de minimizar
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Size = UDim2.new(0, 40, 0, 40)
+minimizeButton.Position = UDim2.new(1, -80, 0, 0)
+minimizeButton.BackgroundColor3 = colors.warning
+minimizeButton.BorderSizePixel = 0
+minimizeButton.Text = "_"
+minimizeButton.TextColor3 = colors.text
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 18
+minimizeButton.Parent = titleBar
+
+-- Hacer el botón circular
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(1, 0)
+minimizeCorner.Parent = minimizeButton
+
+-- Botón de cerrar
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.new(0, 40, 0, 40)
@@ -183,12 +202,39 @@ contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 contentLayout.Padding = UDim.new(0, 15)
 
+-- Controlador de redimensionamiento
+local resizeHandle = Instance.new("Frame")
+resizeHandle.Name = "ResizeHandle"
+resizeHandle.Size = UDim2.new(0, 20, 0, 20)
+resizeHandle.Position = UDim2.new(1, -20, 1, -20)
+resizeHandle.BackgroundColor3 = colors.accent
+resizeHandle.BorderSizePixel = 0
+resizeHandle.ZIndex = 2
+resizeHandle.Parent = mainFrame
+
+local resizeCorner = Instance.new("UICorner")
+resizeCorner.CornerRadius = UDim.new(0, 4)
+resizeCorner.Parent = resizeHandle
+
+-- Icono de redimensionamiento
+local resizeIcon = Instance.new("ImageLabel")
+resizeIcon.Name = "ResizeIcon"
+resizeIcon.Size = UDim2.new(0, 12, 0, 12)
+resizeIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
+resizeIcon.BackgroundTransparency = 1
+resizeIcon.Image = "rbxassetid://3926305904"
+resizeIcon.ImageRectOffset = Vector2.new(884, 4)
+resizeIcon.ImageRectSize = Vector2.new(36, 36)
+resizeIcon.ImageColor3 = colors.text
+resizeIcon.Parent = resizeHandle
+
 -- Crear secciones
 local sections = {
     {Name = "General", Desc = "Configuración general del menu", Icon = "⚙️"},
     {Name = "World", Desc = "Ajustes del entorno y mundo", Icon = "🌎"},
     {Name = "Main", Desc = "Funciones principales del script", Icon = "🚀"},
     {Name = "Players", Desc = "Opciones relacionadas con jugadores", Icon = "👥"},
+    {Name = "Visuals", Desc = "Opciones visuales y de interfaz", Icon = "👁️"},
     {Name = "Misc", Desc = "Otras funciones diversas", Icon = "🔧"}
 }
 
@@ -570,7 +616,7 @@ function createKeybindButton(name, description, parent, currentKey, callback)
     keyButton.Name = "KeyButton"
     keyButton.Size = UDim2.new(0, 100, 0, 40)
     keyButton.Position = UDim2.new(1, -110, 0.5, -20)
-    keyButton.BackgroundColor3 = colors.accept
+    keyButton.BackgroundColor3 = colors.accent
     keyButton.BorderSizePixel = 0
     keyButton.Text = tostring(currentKey):gsub("Enum.KeyCode.", "")
     keyButton.TextColor3 = colors.text
@@ -943,6 +989,16 @@ local espDistanceOption = createESPOption("Mostrar Distancia", "Muestra la dista
     end
 end)
 
+-- Visuals: Opciones de interfaz
+local uiScaleSlider = createSlider("Escala de UI", "Ajusta el tamaño de la interfaz (0.7-1.5)", sectionFrames["Visuals"], 0.7, 1.5, 1, function(value)
+    mainFrame.Size = UDim2.new(0, 550 * value, 0, 600 * value)
+end)
+
+local uiOpacitySlider = createSlider("Opacidad de UI", "Ajusta la transparencia de la interfaz (0.5-1)", sectionFrames["Visuals"], 0.5, 1, 1, function(value)
+    mainFrame.BackgroundTransparency = 1 - value
+    titleBar.BackgroundTransparency = 1 - value
+end)
+
 -- Misc: Open Menu
 local openMenuButton = createButton("Open Menu", "Cambia la tecla para abrir/cerrar el menú", sectionFrames["Misc"], function()
     -- Crear UI para cambiar tecla
@@ -1049,6 +1105,76 @@ function disableESP()
     print("ESP desactivado")
 end
 
+-- Funcionalidad para mover la ventana
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragInput = nil
+            end
+        end)
+    end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput then
+        update(input)
+    end
+end)
+
+-- Funcionalidad para redimensionar la ventana
+local resizing = false
+local startSize
+
+resizeHandle.MouseButton1Down:Connect(function()
+    resizing = true
+    startSize = mainFrame.Size
+    dragStart = UserInputService:GetMouseLocation()
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mousePos = UserInputService:GetMouseLocation()
+        local delta = mousePos - dragStart
+        local newWidth = math.max(400, startSize.X.Offset + delta.X)
+        local newHeight = math.max(300, startSize.Y.Offset + delta.Y)
+        
+        mainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+        
+        -- Ajustar el tamaño del contenido
+        contentPanel.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        resizing = false
+    end
+end)
+
+-- Funcionalidad para minimizar
+minimizeButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+    backgroundFrame.Visible = false
+    RBXWix.Enabled = false
+end)
+
 -- Conectar eventos de teclado
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
@@ -1062,6 +1188,11 @@ closeButton.MouseButton1Click:Connect(function()
     RBXWix.Enabled = false
     mainFrame.Visible = false
     backgroundFrame.Visible = false
+end)
+
+-- Ajustar el tamaño del contenido cuando cambie
+contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    contentPanel.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
 end)
 
 -- Aplicar configuraciones periódicamente
