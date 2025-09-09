@@ -1,42 +1,26 @@
--- RBX Wix UI - Interfaz Mejorada con Funciones Avanzadas
+-- RBX Wix UI - Interfaz Simplificada y Corregida
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
-
--- Esperar a que el PlayerGui exista
-if not player:FindFirstChild("PlayerGui") then
-    player:WaitForChild("PlayerGui")
-end
-
--- Variables globales
 local RBXWix = {
     Enabled = false,
     ToggleKey = Enum.KeyCode.RightShift,
-    FullbrightEnabled = false,
-    JumpPowerEnabled = false,
-    ESPEnabled = false,
     WalkSpeedEnabled = false,
     WalkSpeedValue = 25,
+    JumpPowerEnabled = false,
     JumpPowerValue = 50,
     NoclipEnabled = false,
+    FullbrightEnabled = false,
     FogEnabled = false,
-    ESPObjects = {},
-    ESPHealth = true,
-    ESPDistance = true,
-    NoclipConnections = {},
-    OriginalLighting = nil,
-    OriginalFog = nil
+    ESPEnabled = false
 }
 
--- Colores modernos con tema azul oscuro
+-- Colores
 local colors = {
-    primary = Color3.fromRGB(0, 120, 215),
-    secondary = Color3.fromRGB(40, 40, 40),
     background = Color3.fromRGB(20, 20, 25),
     text = Color3.fromRGB(240, 240, 240),
     accent = Color3.fromRGB(0, 180, 255),
@@ -44,8 +28,6 @@ local colors = {
     toggleOff = Color3.fromRGB(80, 80, 80),
     card = Color3.fromRGB(30, 30, 35),
     header = Color3.fromRGB(25, 25, 30),
-    success = Color3.fromRGB(76, 175, 80),
-    warning = Color3.fromRGB(255, 193, 7),
     danger = Color3.fromRGB(244, 67, 54)
 }
 
@@ -56,427 +38,205 @@ screenGui.Parent = player.PlayerGui
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Crear la interfaz de fondo (para capturar el cursor)
-local backgroundFrame = Instance.new("Frame")
-backgroundFrame.Name = "BackgroundFrame"
-backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
-backgroundFrame.Position = UDim2.new(0, 0, 0, 0)
-backgroundFrame.BackgroundTransparency = 1
-backgroundFrame.Visible = false
-backgroundFrame.Active = true
-backgroundFrame.Parent = screenGui
-
--- Crear la ventana principal con bordes redondeados
+-- Ventana principal
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 550, 0, 600)
-mainFrame.Position = UDim2.new(0.5, -275, 0.5, -300)
+mainFrame.Size = UDim2.new(0, 500, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
 mainFrame.BackgroundColor3 = colors.background
 mainFrame.BorderSizePixel = 0
 mainFrame.ClipsDescendants = true
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
 
--- Añadir bordes redondeados
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 15)
+corner.CornerRadius = UDim.new(0, 10)
 corner.Parent = mainFrame
 
--- Sombra de la ventana mejorada
-local shadow = Instance.new("ImageLabel")
-shadow.Name = "Shadow"
-shadow.Size = UDim2.new(1, 25, 1, 25)
-shadow.Position = UDim2.new(0, -12, 0, -12)
-shadow.BackgroundTransparency = 1
-shadow.Image = "rbxassetid://5554236805"
-shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-shadow.ImageTransparency = 0.8
-shadow.ScaleType = Enum.ScaleType.Slice
-shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-shadow.ZIndex = -1
-shadow.Parent = mainFrame
-
--- Barra de título con efecto de acrílico y capacidad de arrastre
-local titleBar = Instance.new("TextButton")
+-- Barra de título
+local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
 titleBar.BackgroundColor3 = colors.header
 titleBar.BorderSizePixel = 0
-titleBar.Text = ""
-titleBar.AutoButtonColor = false
 titleBar.Parent = mainFrame
-
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 15)
-titleCorner.Parent = titleBar
 
 local titleText = Instance.new("TextLabel")
 titleText.Name = "TitleText"
-titleText.Size = UDim2.new(1, -90, 1, 0)
-titleText.Position = UDim2.new(0, 15, 0, 0)
+titleText.Size = UDim2.new(1, -60, 1, 0)
+titleText.Position = UDim2.new(0, 10, 0, 0)
 titleText.BackgroundTransparency = 1
-titleText.Text = "RBX Wix Premium"
+titleText.Text = "RBX Wix Menu"
 titleText.TextColor3 = colors.text
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Font = Enum.Font.GothamBold
-titleText.TextSize = 18
+titleText.TextSize = 16
 titleText.Parent = titleBar
 
--- Botón de minimizar
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Name = "MinimizeButton"
-minimizeButton.Size = UDim2.new(0, 40, 0, 40)
-minimizeButton.Position = UDim2.new(1, -80, 0, 0)
-minimizeButton.BackgroundColor3 = colors.warning
-minimizeButton.BorderSizePixel = 0
-minimizeButton.Text = "_"
-minimizeButton.TextColor3 = colors.text
-minimizeButton.Font = Enum.Font.GothamBold
-minimizeButton.TextSize = 18
-minimizeButton.Parent = titleBar
-
--- Hacer el botón circular
-local minimizeCorner = Instance.new("UICorner")
-minimizeCorner.CornerRadius = UDim.new(1, 0)
-minimizeCorner.Parent = minimizeButton
-
--- Botón de cerrar
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
-closeButton.Size = UDim2.new(0, 40, 0, 40)
-closeButton.Position = UDim2.new(1, -40, 0, 0)
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
 closeButton.BackgroundColor3 = colors.danger
 closeButton.BorderSizePixel = 0
 closeButton.Text = "X"
 closeButton.TextColor3 = colors.text
 closeButton.Font = Enum.Font.GothamBold
-closeButton.TextSize = 18
+closeButton.TextSize = 16
 closeButton.Parent = titleBar
 
--- Hacer el botón circular
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(1, 0)
-closeCorner.Parent = closeButton
-
--- Marco dividido
-local contentFrame = Instance.new("Frame")
+-- Panel de contenido
+local contentFrame = Instance.new("ScrollingFrame")
 contentFrame.Name = "ContentFrame"
-contentFrame.Size = UDim2.new(1, 0, 1, -40)
-contentFrame.Position = UDim2.new(0, 0, 0, 40)
+contentFrame.Size = UDim2.new(1, 0, 1, -30)
+contentFrame.Position = UDim2.new(0, 0, 0, 30)
 contentFrame.BackgroundTransparency = 1
+contentFrame.ScrollBarThickness = 4
+contentFrame.ScrollBarImageColor3 = colors.accent
+contentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 contentFrame.Parent = mainFrame
 
--- Panel lateral (secciones) con efecto de acrílico
-local sidePanel = Instance.new("ScrollingFrame")
-sidePanel.Name = "SidePanel"
-sidePanel.Size = UDim2.new(0, 160, 1, 0)
-sidePanel.Position = UDim2.new(0, 0, 0, 0)
-sidePanel.BackgroundColor3 = colors.secondary
-sidePanel.BackgroundTransparency = 0.1
-sidePanel.BorderSizePixel = 0
-sidePanel.ScrollBarThickness = 4
-sidePanel.ScrollBarImageColor3 = colors.accent
-sidePanel.CanvasSize = UDim2.new(0, 0, 0, 0)
-sidePanel.Parent = contentFrame
-
-local sideCorner = Instance.new("UICorner")
-sideCorner.CornerRadius = UDim.new(0, 15)
-sideCorner.Parent = sidePanel
-
-local uiListLayout = Instance.new("UIListLayout")
-uiListLayout.Parent = sidePanel
-uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiListLayout.Padding = UDim.new(0, 10)
-
--- Panel de contenido
-local contentPanel = Instance.new("ScrollingFrame")
-contentPanel.Name = "ContentPanel"
-contentPanel.Size = UDim2.new(1, -165, 1, 0)
-contentPanel.Position = UDim2.new(0, 165, 0, 0)
-contentPanel.BackgroundTransparency = 1
-contentPanel.ScrollBarThickness = 4
-contentPanel.ScrollBarImageColor3 = colors.accent
-contentPanel.CanvasSize = UDim2.new(0, 0, 0, 0)
-contentPanel.Parent = contentFrame
-
 local contentLayout = Instance.new("UIListLayout")
-contentLayout.Parent = contentPanel
+contentLayout.Parent = contentFrame
 contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-contentLayout.Padding = UDim.new(0, 15)
+contentLayout.Padding = UDim.new(0, 10)
 
--- Controlador de redimensionamiento
-local resizeHandle = Instance.new("TextButton")
-resizeHandle.Name = "ResizeHandle"
-resizeHandle.Size = UDim2.new(0, 20, 0, 20)
-resizeHandle.Position = UDim2.new(1, -20, 1, -20)
-resizeHandle.BackgroundColor3 = colors.accent
-resizeHandle.BorderSizePixel = 0
-resizeHandle.Text = ""
-resizeHandle.AutoButtonColor = false
-resizeHandle.ZIndex = 2
-resizeHandle.Parent = mainFrame
-
-local resizeCorner = Instance.new("UICorner")
-resizeCorner.CornerRadius = UDim.new(0, 4)
-resizeCorner.Parent = resizeHandle
-
--- Icono de redimensionamiento
-local resizeIcon = Instance.new("ImageLabel")
-resizeIcon.Name = "ResizeIcon"
-resizeIcon.Size = UDim2.new(0, 12, 0, 12)
-resizeIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
-resizeIcon.BackgroundTransparency = 1
-resizeIcon.Image = "rbxassetid://3926305904"
-resizeIcon.ImageRectOffset = Vector2.new(884, 4)
-resizeIcon.ImageRectSize = Vector2.new(36, 36)
-resizeIcon.ImageColor3 = colors.text
-resizeIcon.Parent = resizeHandle
-
--- Crear secciones
-local sections = {
-    {Name = "General", Desc = "Configuración general del menu", Icon = "⚙️"},
-    {Name = "World", Desc = "Ajustes del entorno y mundo", Icon = "🌎"},
-    {Name = "Main", Desc = "Funciones principales del script", Icon = "🚀"},
-    {Name = "Players", Desc = "Opciones relacionadas con jugadores", Icon = "👥"},
-    {Name = "Visuals", Desc = "Opciones visuales y de interfaz", Icon = "👁️"},
-    {Name = "Misc", Desc = "Otras funciones diversas", Icon = "🔧"}
-}
-
-local sectionFrames = {}
-
-for i, sectionData in ipairs(sections) do
-    -- Botón de sección con icono
-    local sectionButton = Instance.new("TextButton")
-    sectionButton.Name = sectionData.Name .. "Button"
-    sectionButton.Size = UDim2.new(0.9, 0, 0, 50)
-    sectionButton.BackgroundColor3 = colors.card
-    sectionButton.BorderSizePixel = 0
-    sectionButton.Text = " " .. sectionData.Icon .. "  " .. sectionData.Name
-    sectionButton.TextColor3 = colors.text
-    sectionButton.Font = Enum.Font.Gotham
-    sectionButton.TextSize = 14
-    sectionButton.TextXAlignment = Enum.TextXAlignment.Left
-    sectionButton.LayoutOrder = i
-    sectionButton.Parent = sidePanel
+-- Función para crear toggles
+function createToggle(name, description, default, callback)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Name = name .. "Toggle"
+    toggleFrame.Size = UDim2.new(0.9, 0, 0, 60)
+    toggleFrame.BackgroundColor3 = colors.card
+    toggleFrame.BorderSizePixel = 0
+    toggleFrame.LayoutOrder = #contentFrame:GetChildren()
+    toggleFrame.Parent = contentFrame
     
-    -- Hacer botones redondeados
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 8)
+    frameCorner.Parent = toggleFrame
+    
+    local toggleText = Instance.new("TextLabel")
+    toggleText.Name = "Text"
+    toggleText.Size = UDim2.new(0.7, -10, 0.5, 0)
+    toggleText.Position = UDim2.new(0, 10, 0, 5)
+    toggleText.BackgroundTransparency = 1
+    toggleText.Text = name
+    toggleText.TextColor3 = colors.text
+    toggleText.TextXAlignment = Enum.TextXAlignment.Left
+    toggleText.Font = Enum.Font.GothamBold
+    toggleText.TextSize = 16
+    toggleText.Parent = toggleFrame
+    
+    local toggleDesc = Instance.new("TextLabel")
+    toggleDesc.Name = "Description"
+    toggleDesc.Size = UDim2.new(0.7, -10, 0.5, 0)
+    toggleDesc.Position = UDim2.new(0, 10, 0.5, 0)
+    toggleDesc.BackgroundTransparency = 1
+    toggleDesc.Text = description
+    toggleDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    toggleDesc.TextXAlignment = Enum.TextXAlignment.Left
+    toggleDesc.Font = Enum.Font.Gotham
+    toggleDesc.TextSize = 12
+    toggleDesc.Parent = toggleFrame
+    
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Size = UDim2.new(0, 40, 0, 20)
+    toggleButton.Position = UDim2.new(1, -50, 0.5, -10)
+    toggleButton.BackgroundColor3 = default and colors.toggleOn or colors.toggleOff
+    toggleButton.BorderSizePixel = 0
+    toggleButton.Text = ""
+    toggleButton.Parent = toggleFrame
+    
     local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 10)
-    buttonCorner.Parent = sectionButton
+    buttonCorner.CornerRadius = UDim.new(1, 0)
+    buttonCorner.Parent = toggleButton
     
-    -- Efecto hover en botones
-    sectionButton.MouseEnter:Connect(function()
-        TweenService:Create(sectionButton, TweenInfo.new(0.2), {BackgroundColor3 = colors.accent}):Play()
-    end)
+    local status = default
     
-    sectionButton.MouseLeave:Connect(function()
-        TweenService:Create(sectionButton, TweenInfo.new(0.2), {BackgroundColor3 = colors.card}):Play()
-    end)
-    
-    -- Frame de contenido de sección
-    local sectionFrame = Instance.new("Frame")
-    sectionFrame.Name = sectionData.Name .. "Frame"
-    sectionFrame.Size = UDim2.new(1, -20, 0, 0)
-    sectionFrame.BackgroundTransparency = 1
-    sectionFrame.Visible = false
-    sectionFrame.LayoutOrder = i
-    sectionFrame.Parent = contentPanel
-    
-    local sectionUIList = Instance.new("UIListLayout")
-    sectionUIList.Parent = sectionFrame
-    sectionUIList.SortOrder = Enum.SortOrder.LayoutOrder
-    sectionUIList.Padding = UDim.new(0, 15)
-    
-    -- Título de sección con icono
-    local sectionTitle = Instance.new("TextLabel")
-    sectionTitle.Name = "Title"
-    sectionTitle.Size = UDim2.new(1, 0, 0, 40)
-    sectionTitle.BackgroundTransparency = 1
-    sectionTitle.Text = sectionData.Icon .. "  " .. sectionData.Name
-    sectionTitle.TextColor3 = colors.text
-    sectionTitle.Font = Enum.Font.GothamBold
-    sectionTitle.TextSize = 22
-    sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-    sectionTitle.Parent = sectionFrame
-    
-    -- Descripción de sección
-    local sectionDesc = Instance.new("TextLabel")
-    sectionDesc.Name = "Description"
-    sectionDesc.Size = UDim2.new(1, 0, 0, 25)
-    sectionDesc.BackgroundTransparency = 1
-    sectionDesc.Text = sectionData.Desc
-    sectionDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
-    sectionDesc.Font = Enum.Font.Gotham
-    sectionDesc.TextSize = 14
-    sectionDesc.TextXAlignment = Enum.TextXAlignment.Left
-    sectionDesc.Parent = sectionFrame
-    
-    sectionFrames[sectionData.Name] = sectionFrame
-    
-    -- Conectar evento de clic al botón
-    sectionButton.MouseButton1Click:Connect(function()
-        for name, frame in pairs(sectionFrames) do
-            frame.Visible = (name == sectionData.Name)
+    toggleButton.MouseButton1Click:Connect(function()
+        status = not status
+        if status then
+            toggleButton.BackgroundColor3 = colors.toggleOn
+        else
+            toggleButton.BackgroundColor3 = colors.toggleOff
+        end
+        if callback then
+            callback(status)
         end
     end)
-end
-
--- Ajustar tamaño del canvas del panel lateral
-sidePanel.CanvasSize = UDim2.new(0, 0, 0, #sections * 60)
-
--- Mostrar la sección General por defecto
-sectionFrames["General"].Visible = true
-
--- Función universal para crear elementos de UI
-function createUIElement(elementType, name, description, parent, config, callback)
-    local element = Instance.new(elementType)
-    element.Name = name
     
-    if elementType == "Frame" then
-        element.Size = UDim2.new(1, 0, 0, 80)
-        element.BackgroundColor3 = colors.card
-        element.BorderSizePixel = 0
-        element.LayoutOrder = #parent:GetChildren()
-        element.Parent = parent
-        
-        local frameCorner = Instance.new("UICorner")
-        frameCorner.CornerRadius = UDim.new(0, 12)
-        frameCorner.Parent = element
-        
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "Text"
-        textLabel.Size = UDim2.new(0.7, -10, 0, 35)
-        textLabel.Position = UDim2.new(0, 15, 0, 10)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Text = name
-        textLabel.TextColor3 = colors.text
-        textLabel.TextXAlignment = Enum.TextXAlignment.Left
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 18
-        textLabel.Parent = element
-        
-        local descLabel = Instance.new("TextLabel")
-        descLabel.Name = "Description"
-        descLabel.Size = UDim2.new(0.7, -10, 0, 30)
-        descLabel.Position = UDim2.new(0, 15, 0, 45)
-        descLabel.BackgroundTransparency = 1
-        descLabel.Text = description
-        descLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        descLabel.TextXAlignment = Enum.TextXAlignment.Left
-        descLabel.Font = Enum.Font.Gotham
-        descLabel.TextSize = 14
-        descLabel.Parent = element
-        
-        if config and config.type == "toggle" then
-            local toggleContainer = Instance.new("Frame")
-            toggleContainer.Name = "ToggleContainer"
-            toggleContainer.Size = UDim2.new(0, 55, 0, 26)
-            toggleContainer.Position = UDim2.new(1, -65, 0.5, -13)
-            toggleContainer.BackgroundColor3 = config.default and colors.toggleOn or colors.toggleOff
-            toggleContainer.BorderSizePixel = 0
-            toggleContainer.Parent = element
-            
-            local containerCorner = Instance.new("UICorner")
-            containerCorner.CornerRadius = UDim.new(1, 0)
-            containerCorner.Parent = toggleContainer
-            
-            local toggleKnob = Instance.new("Frame")
-            toggleKnob.Name = "ToggleKnob"
-            toggleKnob.Size = UDim2.new(0, 22, 0, 22)
-            toggleKnob.Position = config.default and UDim2.new(0, 31, 0, 2) or UDim2.new(0, 2, 0, 2)
-            toggleKnob.BackgroundColor3 = colors.text
-            toggleKnob.BorderSizePixel = 0
-            toggleKnob.Parent = toggleContainer
-            
-            local knobCorner = Instance.new("UICorner")
-            knobCorner.CornerRadius = UDim.new(1, 0)
-            knobCorner.Parent = toggleKnob
-            
-            local status = config.default or false
-            
-            local function updateToggle()
-                if status then
-                    TweenService:Create(toggleContainer, TweenInfo.new(0.2), {BackgroundColor3 = colors.toggleOn}):Play()
-                    TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 31, 0, 2)}):Play()
-                else
-                    TweenService:Create(toggleContainer, TweenInfo.new(0.2), {BackgroundColor3 = colors.toggleOff}):Play()
-                    TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0, 2)}):Play()
-                end
-                if callback then
-                    callback(status)
-                end
+    return {
+        Set = function(value)
+            status = value
+            if status then
+                toggleButton.BackgroundColor3 = colors.toggleOn
+            else
+                toggleButton.BackgroundColor3 = colors.toggleOff
             end
-            
-            element.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    status = not status
-                    updateToggle()
-                end
-            end)
-            
-            return {
-                Set = function(value)
-                    status = value
-                    updateToggle()
-                end,
-                Get = function()
-                    return status
-                end
-            }
-        elseif config and config.type == "button" then
-            local actionButton = Instance.new("TextButton")
-            actionButton.Name = "ActionButton"
-            actionButton.Size = UDim2.new(0, 100, 0, 40)
-            actionButton.Position = UDim2.new(1, -110, 0.5, -20)
-            actionButton.BackgroundColor3 = colors.accent
-            actionButton.BorderSizePixel = 0
-            actionButton.Text = config.buttonText or "Activar"
-            actionButton.TextColor3 = colors.text
-            actionButton.Font = Enum.Font.GothamBold
-            actionButton.TextSize = 16
-            actionButton.Parent = element
-            
-            local buttonCorner = Instance.new("UICorner")
-            buttonCorner.CornerRadius = UDim.new(0, 8)
-            buttonCorner.Parent = actionButton
-            
-            actionButton.MouseButton1Click:Connect(function()
-                if callback then
-                    callback()
-                end
-            end)
-            
-            return actionButton
+        end,
+        Get = function()
+            return status
         end
-    end
-    
-    return element
+    }
 end
 
--- Función para crear slider
-function createSlider(name, description, parent, min, max, default, callback)
-    local sliderFrame = createUIElement("Frame", name .. "Slider", description, parent)
-    sliderFrame.Size = UDim2.new(1, 0, 0, 100)
+-- Función para crear sliders
+function createSlider(name, description, min, max, default, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = name .. "Slider"
+    sliderFrame.Size = UDim2.new(0.9, 0, 0, 80)
+    sliderFrame.BackgroundColor3 = colors.card
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.LayoutOrder = #contentFrame:GetChildren()
+    sliderFrame.Parent = contentFrame
+    
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 8)
+    frameCorner.Parent = sliderFrame
+    
+    local sliderText = Instance.new("TextLabel")
+    sliderText.Name = "Text"
+    sliderText.Size = UDim2.new(0.7, -10, 0, 30)
+    sliderText.Position = UDim2.new(0, 10, 0, 5)
+    sliderText.BackgroundTransparency = 1
+    sliderText.Text = name
+    sliderText.TextColor3 = colors.text
+    sliderText.TextXAlignment = Enum.TextXAlignment.Left
+    sliderText.Font = Enum.Font.GothamBold
+    sliderText.TextSize = 16
+    sliderText.Parent = sliderFrame
     
     local valueText = Instance.new("TextLabel")
     valueText.Name = "ValueText"
-    valueText.Size = UDim2.new(0.3, -10, 0, 35)
-    valueText.Position = UDim2.new(0.7, 0, 0, 10)
+    valueText.Size = UDim2.new(0.3, -10, 0, 30)
+    valueText.Position = UDim2.new(0.7, 0, 0, 5)
     valueText.BackgroundTransparency = 1
     valueText.Text = tostring(default)
     valueText.TextColor3 = colors.text
     valueText.TextXAlignment = Enum.TextXAlignment.Right
     valueText.Font = Enum.Font.GothamBold
-    valueText.TextSize = 18
+    valueText.TextSize = 16
     valueText.Parent = sliderFrame
+    
+    local sliderDesc = Instance.new("TextLabel")
+    sliderDesc.Name = "Description"
+    sliderDesc.Size = UDim2.new(1, -20, 0, 20)
+    sliderDesc.Position = UDim2.new(0, 10, 0, 35)
+    sliderDesc.BackgroundTransparency = 1
+    sliderDesc.Text = description
+    sliderDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    sliderDesc.TextXAlignment = Enum.TextXAlignment.Left
+    sliderDesc.Font = Enum.Font.Gotham
+    sliderDesc.TextSize = 12
+    sliderDesc.Parent = sliderFrame
     
     local sliderTrack = Instance.new("Frame")
     sliderTrack.Name = "SliderTrack"
-    sliderTrack.Size = UDim2.new(1, -30, 0, 8)
-    sliderTrack.Position = UDim2.new(0, 15, 1, -30)
+    sliderTrack.Size = UDim2.new(1, -20, 0, 6)
+    sliderTrack.Position = UDim2.new(0, 10, 1, -15)
     sliderTrack.BackgroundColor3 = colors.toggleOff
     sliderTrack.BorderSizePixel = 0
     sliderTrack.Parent = sliderFrame
@@ -487,7 +247,7 @@ function createSlider(name, description, parent, min, max, default, callback)
     
     local sliderFill = Instance.new("Frame")
     sliderFill.Name = "SliderFill"
-    sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
     sliderFill.Position = UDim2.new(0, 0, 0, 0)
     sliderFill.BackgroundColor3 = colors.accent
     sliderFill.BorderSizePixel = 0
@@ -499,8 +259,8 @@ function createSlider(name, description, parent, min, max, default, callback)
     
     local sliderButton = Instance.new("TextButton")
     sliderButton.Name = "SliderButton"
-    sliderButton.Size = UDim2.new(0, 18, 0, 18)
-    sliderButton.Position = UDim2.new((default - min) / (max - min), -9, 0.5, -9)
+    sliderButton.Size = UDim2.new(0, 16, 0, 16)
+    sliderButton.Position = UDim2.new(0.5, -8, 0.5, -8)
     sliderButton.BackgroundColor3 = colors.text
     sliderButton.BorderSizePixel = 0
     sliderButton.Text = ""
@@ -517,9 +277,8 @@ function createSlider(name, description, parent, min, max, default, callback)
         value = math.clamp(newValue, min, max)
         local percentage = (value - min) / (max - min)
         
-        TweenService:Create(sliderFill, TweenInfo.new(0.1), {Size = UDim2.new(percentage, 0, 1, 0)}):Play()
-        TweenService:Create(sliderButton, TweenInfo.new(0.1), {Position = UDim2.new(percentage, -9, 0.5, -9)}):Play()
-        
+        sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+        sliderButton.Position = UDim2.new(percentage, -8, 0.5, -8)
         valueText.Text = tostring(math.floor(value))
         
         if callback then
@@ -559,6 +318,8 @@ function createSlider(name, description, parent, min, max, default, callback)
         end
     end)
     
+    updateSlider(default)
+    
     return {
         Set = function(newValue)
             updateSlider(newValue)
@@ -569,46 +330,74 @@ function createSlider(name, description, parent, min, max, default, callback)
     }
 end
 
--- Añadir funciones a las secciones usando la función universal
-
--- Main: WalkSpeed
-local walkSpeedSlider = createSlider("WalkSpeed", "Controla la velocidad de movimiento (16-100)", sectionFrames["Main"], 16, 100, 25, function(value)
+-- Crear elementos de la interfaz
+local walkSpeedSlider = createSlider("WalkSpeed", "Controla la velocidad de movimiento", 16, 100, 25, function(value)
     RBXWix.WalkSpeedValue = value
 end)
 
-local walkSpeedToggle = createUIElement("Frame", "WalkSpeed", "Activa/desactiva la velocidad de movimiento mejorada", sectionFrames["Main"], {type = "toggle", default = false}, function(state)
+local walkSpeedToggle = createToggle("WalkSpeed", "Activa/desactiva la velocidad de movimiento", false, function(state)
     RBXWix.WalkSpeedEnabled = state
 end)
 
--- Loop para aplicar walkspeed continuamente
-local walkspeedLoop
-walkspeedLoop = RunService.Heartbeat:Connect(function()
-    if RBXWix.WalkSpeedEnabled then
-        local character = player.Character
-        if character then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
+local jumpPowerSlider = createSlider("Jump Power", "Controla la fuerza de salto", 50, 200, 50, function(value)
+    RBXWix.JumpPowerValue = value
+end)
+
+local jumpPowerToggle = createToggle("Jump Power", "Activa/desactiva la fuerza de salto", false, function(state)
+    RBXWix.JumpPowerEnabled = state
+end)
+
+local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos", false, function(state)
+    RBXWix.NoclipEnabled = state
+end)
+
+local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación global", false, function(state)
+    RBXWix.FullbrightEnabled = state
+    if state then
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    else
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    end
+end)
+
+local fogToggle = createToggle("Fog", "Elimina la niebla del entorno", false, function(state)
+    RBXWix.FogEnabled = state
+    if state then
+        Lighting.FogEnd = 100000
+    else
+        Lighting.FogEnd = 1000
+    end
+end)
+
+local espToggle = createToggle("ESP", "Muestra información de jugadores", false, function(state)
+    RBXWix.ESPEnabled = state
+end)
+
+-- Ajustar tamaño del contenido
+contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+end)
+
+-- Funciones de gameplay
+local function applyWalkSpeed()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if RBXWix.WalkSpeedEnabled then
                 humanoid.WalkSpeed = RBXWix.WalkSpeedValue
+            else
+                humanoid.WalkSpeed = 16
             end
         end
     end
-end)
+end
 
--- Main: Jump Power
-local jumpPowerSlider = createSlider("Jump Power", "Controla la fuerza de salto (50-200)", sectionFrames["Main"], 50, 200, 50, function(value)
-    RBXWix.JumpPowerValue = value
-    if RBXWix.JumpPowerEnabled then
-        applyJumpPower()
-    end
-end)
-
-local jumpPowerToggle = createUIElement("Frame", "Jump Power", "Activa/desactiva la fuerza de salto mejorada", sectionFrames["Main"], {type = "toggle", default = false}, function(state)
-    RBXWix.JumpPowerEnabled = state
-    applyJumpPower()
-end)
-
--- Función para aplicar jump power
-function applyJumpPower()
+local function applyJumpPower()
     local character = player.Character
     if character then
         local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -622,372 +411,67 @@ function applyJumpPower()
     end
 end
 
--- Main: Noclip
-local noclipToggle = createUIElement("Frame", "Noclip", "Permite atravesar paredes y objetos", sectionFrames["Main"], {type = "toggle", default = false}, function(state)
-    RBXWix.NoclipEnabled = state
-    if state then
+local function enableNoclip()
+    local character = player.Character
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end
+
+local function disableNoclip()
+    local character = player.Character
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- Loop principal para aplicar las funciones
+RunService.Heartbeat:Connect(function()
+    if RBXWix.WalkSpeedEnabled then
+        applyWalkSpeed()
+    end
+    
+    if RBXWix.JumpPowerEnabled then
+        applyJumpPower()
+    end
+    
+    if RBXWix.NoclipEnabled then
         enableNoclip()
     else
         disableNoclip()
     end
 end)
 
--- Función para habilitar noclip
-function enableNoclip()
-    local character = player.Character
-    if not character then return end
-    
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
-    
-    RBXWix.NoclipConnections.character = character.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("BasePart") then
-            descendant.CanCollide = false
-        end
-    end)
+-- Función para abrir/cerrar la interfaz
+local function toggleUI()
+    RBXWix.Enabled = not RBXWix.Enabled
+    mainFrame.Visible = RBXWix.Enabled
 end
 
--- Función para deshabilitar noclip
-function disableNoclip()
-    if RBXWix.NoclipConnections.character then
-        RBXWix.NoclipConnections.character:Disconnect()
-        RBXWix.NoclipConnections.character = nil
-    end
-    
-    local character = player.Character
-    if not character then return end
-    
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = true
-        end
-    end
-end
-
--- World: Fullbright
-local fullbrightToggle = createUIElement("Frame", "Fullbright", "Mejora la iluminación global para ver en la oscuridad", sectionFrames["World"], {type = "toggle", default = false}, function(state)
-    RBXWix.FullbrightEnabled = state
-    if state then
-        if not RBXWix.OriginalLighting then
-            RBXWix.OriginalLighting = {
-                Brightness = Lighting.Brightness,
-                ClockTime = Lighting.ClockTime,
-                GlobalShadows = Lighting.GlobalShadows,
-                OutdoorAmbient = Lighting.OutdoorAmbient,
-                FogEnd = Lighting.FogEnd
-            }
-        end
-        
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.GlobalShadows = false
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-        Lighting.FogEnd = 100000
-    else
-        if RBXWix.OriginalLighting then
-            Lighting.Brightness = RBXWix.OriginalLighting.Brightness
-            Lighting.ClockTime = RBXWix.OriginalLighting.ClockTime
-            Lighting.GlobalShadows = RBXWix.OriginalLighting.GlobalShadows
-            Lighting.OutdoorAmbient = RBXWix.OriginalLighting.OutdoorAmbient
-            Lighting.FogEnd = RBXWix.OriginalLighting.FogEnd
-        end
+-- Conectar eventos
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
+        toggleUI()
     end
 end)
 
--- World: Fog
-local fogToggle = createUIElement("Frame", "Fog", "Elimina la niebla y oscuridad del entorno", sectionFrames["World"], {type = "toggle", default = false}, function(state)
-    RBXWix.FogEnabled = state
-    if state then
-        if not RBXWix.OriginalFog then
-            RBXWix.OriginalFog = {
-                FogStart = Lighting.FogStart,
-                FogEnd = Lighting.FogEnd,
-                FogColor = Lighting.FogColor
-            }
-        end
-        
-        Lighting.FogStart = 0
-        Lighting.FogEnd = 100000
-        Lighting.FogColor = Color3.fromRGB(255, 255, 255)
-    else
-        if RBXWix.OriginalFog then
-            Lighting.FogStart = RBXWix.OriginalFog.FogStart
-            Lighting.FogEnd = RBXWix.OriginalFog.FogEnd
-            Lighting.FogColor = RBXWix.OriginalFog.FogColor
-        end
-    end
+closeButton.MouseButton1Click:Connect(function()
+    toggleUI()
 end)
 
--- Players: ESP
-local espToggle = createUIElement("Frame", "ESP", "Muestra información de jugadores dentro de un radio de 800m", sectionFrames["Players"], {type = "toggle", default = false}, function(state)
-    RBXWix.ESPEnabled = state
-    if state then
-        enableESP()
-    else
-        disableESP()
-    end
-end)
-
--- Funciones ESP mejoradas
-function enableESP()
-    -- Limpiar ESP existente
-    disableESP()
-    
-    -- Crear ESP para cada jugador
-    for _, otherPlayer in ipairs(Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character then
-            createESP(otherPlayer.Character, otherPlayer.Name)
-        end
-    end
-    
-    -- Conectar para nuevos jugadores
-    Players.PlayerAdded:Connect(function(newPlayer)
-        newPlayer.CharacterAdded:Connect(function(character)
-            if RBXWix.ESPEnabled then
-                createESP(character, newPlayer.Name)
-            end
-        end)
-    end)
-end
-
-function disableESP()
-    for _, espObject in pairs(RBXWix.ESPObjects) do
-        if espObject and espObject:IsA("Instance") then
-            espObject:Destroy()
-        end
-    end
-    RBXWix.ESPObjects = {}
-end
-
-function createESP(character, playerName)
-    -- Crear highlight
-    local highlight = Instance.new("Highlight")
-    highlight.Name = playerName .. "ESP"
-    highlight.Adornee = character
-    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
-    highlight.Parent = character
-    
-    -- Crear billboard GUI para nombre y distancia
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = playerName .. "ESPInfo"
-    billboard.Adornee = character:FindFirstChild("Head") or character:WaitForChild("Head", 1)
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = character
-    
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = playerName
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 14
-    nameLabel.Parent = billboard
-    
-    local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
-    distanceLabel.BackgroundTransparency = 1
-    distanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    distanceLabel.TextStrokeTransparency = 0
-    distanceLabel.Font = Enum.Font.Gotham
-    distanceLabel.TextSize = 12
-    distanceLabel.Parent = billboard
-    
-    -- Actualizar distancia en tiempo real
-    local distanceLoop
-    distanceLoop = RunService.Heartbeat:Connect(function()
-        if not character or not character:FindFirstChild("HumanoidRootPart") or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-            distanceLoop:Disconnect()
-            return
-        end
-        
-        local distance = (character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-        distanceLabel.Text = string.format("Distancia: %.1f", distance)
-    end)
-    
-    table.insert(RBXWix.ESPObjects, highlight)
-    table.insert(RBXWix.ESPObjects, billboard)
-end
-
--- Misc: Open Menu - Función corregida
-local function changeToggleKey()
-    -- Crear popup para cambiar tecla
-    local keybindPopup = Instance.new("Frame")
-    keybindPopup.Name = "KeybindPopup"
-    keybindPopup.Size = UDim2.new(0, 300, 0, 150)
-    keybindPopup.Position = UDim2.new(0.5, -150, 0.5, -75)
-    keybindPopup.BackgroundColor3 = colors.card
-    keybindPopup.BorderSizePixel = 0
-    keybindPopup.ZIndex = 10
-    keybindPopup.Parent = screenGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = keybindPopup
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 40)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = colors.primary
-    title.BorderSizePixel = 0
-    title.Text = "Cambiar Tecla"
-    title.TextColor3 = colors.text
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 16
-    title.ZIndex = 11
-    title.Parent = keybindPopup
-    
-    local instruction = Instance.new("TextLabel")
-    instruction.Size = UDim2.new(1, -20, 0, 40)
-    instruction.Position = UDim2.new(0, 10, 0, 40)
-    instruction.BackgroundTransparency = 1
-    instruction.Text = "Presiona una tecla para asignar"
-    instruction.TextColor3 = colors.text
-    instruction.Font = Enum.Font.Gotham
-    instruction.TextSize = 14
-    instruction.ZIndex = 11
-    instruction.Parent = keybindPopup
-    
-    local keyDisplay = Instance.new("TextButton")
-    keyDisplay.Size = UDim2.new(0, 100, 0, 40)
-    keyDisplay.Position = UDim2.new(0.5, -50, 0.5, 0)
-    keyDisplay.BackgroundColor3 = colors.accent
-    keyDisplay.BorderSizePixel = 0
-    keyDisplay.Text = tostring(RBXWix.ToggleKey):gsub("Enum.KeyCode.", "")
-    keyDisplay.TextColor3 = colors.text
-    keyDisplay.Font = Enum.Font.GothamBold
-    keyDisplay.TextSize = 16
-    keyDisplay.ZIndex = 11
-    keyDisplay.Parent = keybindPopup
-    
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 8)
-    buttonCorner.Parent = keyDisplay
-    
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 120, 0, 30)
-    closeButton.Position = UDim2.new(0.5, -60, 1, -40)
-    closeButton.BackgroundColor3 = colors.danger
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "Cerrar"
-    closeButton.TextColor3 = colors.text
-    closeButton.Font = Enum.Font.Gotham
-    closeButton.TextSize = 14
-    closeButton.ZIndex = 11
-    closeButton.Parent = keybindPopup
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeButton
-    
-    local connection
-    keyDisplay.MouseButton1Click:Connect(function()
-        keyDisplay.Text = "..."
-        connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-            if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
-                RBXWix.ToggleKey = input.KeyCode
-                keyDisplay.Text = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
-                if connection then
-                    connection:Disconnect()
-                end
-            end
-        end)
-    end)
-    
-    closeButton.MouseButton1Click:Connect(function()
-        keybindPopup:Destroy()
-        if connection then
-            connection:Disconnect()
-        end
-    end)
-end
-
-local openMenuButton = createUIElement("Frame", "Open Menu", "Cambia la tecla para abrir/cerrar el menú", sectionFrames["Misc"], {type = "button", buttonText = "Cambiar"}, changeToggleKey)
-
--- Misc: Clean Script
-local function cleanScript()
-    -- Desactivar todas las funciones
-    RBXWix.WalkSpeedEnabled = false
-    RBXWix.JumpPowerEnabled = false
-    RBXWix.NoclipEnabled = false
-    RBXWix.FullbrightEnabled = false
-    RBXWix.FogEnabled = false
-    RBXWix.ESPEnabled = false
-    
-    -- Restaurar valores originales
-    local character = player.Character
-    if character then
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = 16
-            humanoid.JumpPower = 50
-        end
-    end
-    
-    -- Restaurar iluminación
-    if RBXWix.OriginalLighting then
-        Lighting.Brightness = RBXWix.OriginalLighting.Brightness
-        Lighting.ClockTime = RBXWix.OriginalLighting.ClockTime
-        Lighting.GlobalShadows = RBXWix.OriginalLighting.GlobalShadows
-        Lighting.OutdoorAmbient = RBXWix.OriginalLighting.OutdoorAmbient
-        Lighting.FogEnd = RBXWix.OriginalLighting.FogEnd
-    end
-    
-    -- Restaurar niebla
-    if RBXWix.OriginalFog then
-        Lighting.FogStart = RBXWix.OriginalFog.FogStart
-        Lighting.FogEnd = RBXWix.OriginalFog.FogEnd
-        Lighting.FogColor = RBXWix.OriginalFog.FogColor
-    end
-    
-    -- Desactivar noclip
-    disableNoclip()
-    
-    -- Desactivar ESP
-    disableESP()
-    
-    -- Actualizar toggles en la UI
-    if walkSpeedToggle and walkSpeedToggle.Set then walkSpeedToggle.Set(false) end
-    if jumpPowerToggle and jumpPowerToggle.Set then jumpPowerToggle.Set(false) end
-    if noclipToggle and noclipToggle.Set then noclipToggle.Set(false) end
-    if fullbrightToggle and fullbrightToggle.Set then fullbrightToggle.Set(false) end
-    if fogToggle and fogToggle.Set then fogToggle.Set(false) end
-    if espToggle and espToggle.Set then espToggle.Set(false) end
-    
-    -- Mostrar mensaje de confirmación
-    local notification = Instance.new("TextLabel")
-    notification.Size = UDim2.new(0, 200, 0, 50)
-    notification.Position = UDim2.new(0.5, -100, 0, 10)
-    notification.BackgroundColor3 = colors.success
-    notification.Text = "Script limpiado correctamente"
-    notification.TextColor3 = colors.text
-    notification.Font = Enum.Font.GothamBold
-    notification.TextSize = 14
-    notification.Parent = screenGui
-    
-    local notifCorner = Instance.new("UICorner")
-    notifCorner.CornerRadius = UDim.new(0, 8)
-    notifCorner.Parent = notification
-    
-    delay(3, function()
-        notification:Destroy()
-    end)
-end
-
-local cleanScriptButton = createUIElement("Frame", "Clean Script", "Desactiva todas las funciones y restaura valores", sectionFrames["Misc"], {type = "button", buttonText = "Limpiar"}, cleanScript)
-
--- Funcionalidad para mover la ventana
-local dragInput, dragStart, startPos
+-- Arrastrar la ventana
+local dragging = false
+local dragInput
+local dragStart
+local startPos
 
 local function update(input)
     local delta = input.Position - dragStart
@@ -996,12 +480,13 @@ end
 
 titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
         dragStart = input.Position
         startPos = mainFrame.Position
         
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
-                dragInput = nil
+                dragging = false
             end
         end)
     end
@@ -1014,74 +499,10 @@ titleBar.InputChanged:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput then
+    if input == dragInput and dragging then
         update(input)
     end
 end)
 
--- Funcionalidad para redimensionar la ventana
-local resizing = false
-local startSize
-
-resizeHandle.MouseButton1Down:Connect(function()
-    resizing = true
-    startSize = mainFrame.Size
-    dragStart = UserInputService:GetMouseLocation()
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local mousePos = UserInputService:GetMouseLocation()
-        local delta = mousePos - dragStart
-        local newWidth = math.max(400, startSize.X.Offset + delta.X)
-        local newHeight = math.max(300, startSize.Y.Offset + delta.Y)
-        
-        mainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        resizing = false
-    end
-end)
-
--- Funcionalidad para minimizar
-minimizeButton.MouseButton1Click:Connect(function()
-    mainFrame.Visible = false
-    backgroundFrame.Visible = false
-    RBXWix.Enabled = false
-end)
-
--- Función de cierre mejorada
-local function closeUI()
-    RBXWix.Enabled = false
-    mainFrame.Visible = false
-    backgroundFrame.Visible = false
-end
-
--- Conectar eventos de teclado
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
-        RBXWix.Enabled = not RBXWix.Enabled
-        mainFrame.Visible = RBXWix.Enabled
-        backgroundFrame.Visible = RBXWix.Enabled
-    end
-end)
-
-closeButton.MouseButton1Click:Connect(closeUI)
-
--- Ajustar el tamaño del contenido cuando cambie
-contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    contentPanel.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
-end)
-
--- Aplicar configuraciones periódicamente
-RunService.Heartbeat:Connect(function()
-    if RBXWix.JumpPowerEnabled then
-        applyJumpPower()
-    end
-    if RBXWix.NoclipEnabled then
-        enableNoclip()
-    end
-end)
+-- Mensaje de inicialización
+print("RBX Wix UI cargado correctamente. Presiona RightShift para abrir/cerrar el menú.")
