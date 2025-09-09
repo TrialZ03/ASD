@@ -755,7 +755,7 @@ end
 
 function disableESP()
     for _, espObject in pairs(RBXWix.ESPObjects) do
-        if espObject and espObject:IsA("Highlight") then
+        if espObject and espObject:IsA("Instance") then
             espObject:Destroy()
         end
     end
@@ -957,12 +957,12 @@ local function cleanScript()
     disableESP()
     
     -- Actualizar toggles en la UI
-    walkSpeedToggle.Set(false)
-    jumpPowerToggle.Set(false)
-    noclipToggle.Set(false)
-    fullbrightToggle.Set(false)
-    fogToggle.Set(false)
-    espToggle.Set(false)
+    if walkSpeedToggle and walkSpeedToggle.Set then walkSpeedToggle.Set(false) end
+    if jumpPowerToggle and jumpPowerToggle.Set then jumpPowerToggle.Set(false) end
+    if noclipToggle and noclipToggle.Set then noclipToggle.Set(false) end
+    if fullbrightToggle and fullbrightToggle.Set then fullbrightToggle.Set(false) end
+    if fogToggle and fogToggle.Set then fogToggle.Set(false) end
+    if espToggle and espToggle.Set then espToggle.Set(false) end
     
     -- Mostrar mensaje de confirmación
     local notification = Instance.new("TextLabel")
@@ -1053,6 +1053,13 @@ minimizeButton.MouseButton1Click:Connect(function()
     RBXWix.Enabled = false
 end)
 
+-- Función de cierre mejorada
+local function closeUI()
+    RBXWix.Enabled = false
+    mainFrame.Visible = false
+    backgroundFrame.Visible = false
+end
+
 -- Conectar eventos de teclado
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
@@ -1062,11 +1069,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-closeButton.MouseButton1Click:Connect(function()
-    RBXWix.Enabled = false
-    mainFrame.Visible = false
-    backgroundFrame.Visible = false
-end)
+closeButton.MouseButton1Click:Connect(closeUI)
 
 -- Ajustar el tamaño del contenido cuando cambie
 contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
