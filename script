@@ -645,7 +645,7 @@ function createButton(name, description, parent, callback)
     actionButton.Name = "ActionButton"
     actionButton.Size = UDim2.new(0, 100, 0, 40)
     actionButton.Position = UDim2.new(1, -110, 0.5, -20)
-    actionButton.BackgroundColor3 = colors.accept
+    actionButton.BackgroundColor3 = colors.accent
     actionButton.BorderSizePixel = 0
     actionButton.Text = "Activar"
     actionButton.TextColor3 = colors.text
@@ -796,4 +796,283 @@ function applyJumpPower()
     if character then
         local humanoid = character:FindFirstChildOfClass("Humanoid")
         if humanoid then
-            if RBX
+            if RBXWix.JumpPowerEnabled then
+                humanoid.JumpPower = RBXWix.JumpPowerValue
+            else
+                humanoid.JumpPower = 50
+            end
+        end
+    end
+end
+
+-- Main: Noclip mejorado
+local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos", sectionFrames["Main"], function(state)
+    RBXWix.NoclipEnabled = state
+    if state then
+        enableNoclip()
+    else
+        disableNoclip()
+    end
+end)
+
+-- Función para habilitar noclip mejorado
+function enableNoclip()
+    local character = player.Character
+    if not character then return end
+    
+    -- Desactivar colisión para todas las partes existentes
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+            part.Velocity = Vector3.new(0, 0, 0)
+            part.RotVelocity = Vector3.new(0, 0, 0)
+        end
+    end
+    
+    -- Conectar para cuando se agreguen nuevas partes
+    RBXWix.NoclipConnections.character = character.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA("BasePart") then
+            descendant.CanCollide = false
+            descendant.Velocity = Vector3.new(0, 0, 0)
+            descendant.RotVelocity = Vector3.new(0, 0, 0)
+        end
+    end)
+end
+
+-- Función para deshabilitar noclip
+function disableNoclip()
+    if RBXWix.NoclipConnections.character then
+        RBXWix.NoclipConnections.character:Disconnect()
+        RBXWix.NoclipConnections.character = nil
+    end
+    
+    local character = player.Character
+    if not character then return end
+    
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+end
+
+-- World: Fullbright
+local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación global para ver en la oscuridad", sectionFrames["World"], function(state)
+    RBXWix.FullbrightEnabled = state
+    if state then
+        -- Guardar configuración original
+        if not RBXWix.OriginalLighting then
+            RBXWix.OriginalLighting = {
+                Brightness = Lighting.Brightness,
+                ClockTime = Lighting.ClockTime,
+                GlobalShadows = Lighting.GlobalShadows,
+                OutdoorAmbient = Lighting.OutdoorAmbient,
+                FogEnd = Lighting.FogEnd
+            }
+        end
+        
+        -- Aplicar fullbright
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.FogEnd = 100000
+    else
+        -- Restaurar configuración original
+        if RBXWix.OriginalLighting then
+            Lighting.Brightness = RBXWix.OriginalLighting.Brightness
+            Lighting.ClockTime = RBXWix.OriginalLighting.ClockTime
+            Lighting.GlobalShadows = RBXWix.OriginalLighting.GlobalShadows
+            Lighting.OutdoorAmbient = RBXWix.OriginalLighting.OutdoorAmbient
+            Lighting.FogEnd = RBXWix.OriginalLighting.FogEnd
+        end
+    end
+end)
+
+-- World: Fog
+local fogToggle = createToggle("Fog", "Elimina la niebla y oscuridad del entorno", sectionFrames["World"], function(state)
+    RBXWix.FogEnabled = state
+    if state then
+        -- Guardar configuración original de fog
+        if not RBXWix.OriginalFog then
+            RBXWix.OriginalFog = {
+                FogStart = Lighting.FogStart,
+                FogEnd = Lighting.FogEnd,
+                FogColor = Lighting.FogColor
+            }
+        end
+        
+        -- Eliminar la niebla
+        Lighting.FogStart = 0
+        Lighting.FogEnd = 100000
+        Lighting.FogColor = Color3.fromRGB(255, 255, 255)
+    else
+        -- Restaurar configuración original
+        if RBXWix.OriginalFog then
+            Lighting.FogStart = RBXWix.OriginalFog.FogStart
+            Lighting.FogEnd = RBXWix.OriginalFog.FogEnd
+            Lighting.FogColor = RBXWix.OriginalFog.FogColor
+        end
+    end
+end)
+
+-- Players: ESP con subopciones
+local espToggle = createToggle("ESP", "Muestra información de jugadores dentro de un radio de 800m", sectionFrames["Players"], function(state)
+    RBXWix.ESPEnabled = state
+    if state then
+        enableESP()
+    else
+        disableESP()
+    end
+end)
+
+-- Subopciones de ESP
+local espHealthOption = createESPOption("Mostrar Salud", "Muestra la barra de salud de los jugadores", sectionFrames["Players"], true, function(state)
+    RBXWix.ESPHealth = state
+    if RBXWix.ESPEnabled then
+        disableESP()
+        enableESP()
+    end
+end)
+
+local espDistanceOption = createESPOption("Mostrar Distancia", "Muestra la distancia a los jugadores", sectionFrames["Players"], true, function(state)
+    RBXWix.ESPDistance = state
+    if RBXWix.ESPEnabled then
+        disableESP()
+        enableESP()
+    end
+end)
+
+-- Misc: Open Menu
+local openMenuButton = createButton("Open Menu", "Cambia la tecla para abrir/cerrar el menú", sectionFrames["Misc"], function()
+    -- Crear UI para cambiar tecla
+    local keybindFrame = Instance.new("Frame")
+    keybindFrame.Name = "KeybindFrame"
+    keybindFrame.Size = UDim2.new(0, 300, 0, 150)
+    keybindFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    keybindFrame.BackgroundColor3 = colors.card
+    keybindFrame.BorderSizePixel = 0
+    keybindFrame.ZIndex = 10
+    keybindFrame.Visible = true
+    keybindFrame.Parent = screenGui
+    
+    -- Bordes redondeados
+    local keybindCorner = Instance.new("UICorner")
+    keybindCorner.CornerRadius = UDim.new(0, 12)
+    keybindCorner.Parent = keybindFrame
+    
+    local keybindTitle = Instance.new("TextLabel")
+    keybindTitle.Size = UDim2.new(1, 0, 0, 40)
+    keybindTitle.Position = UDim2.new(0, 0, 0, 0)
+    keybindTitle.BackgroundColor3 = colors.primary
+    keybindTitle.BorderSizePixel = 0
+    keybindTitle.Text = "Cambiar Tecla"
+    keybindTitle.TextColor3 = colors.text
+    keybindTitle.Font = Enum.Font.GothamBold
+    keybindTitle.TextSize = 16
+    keybindTitle.ZIndex = 11
+    keybindTitle.Parent = keybindFrame
+    
+    -- Bordes redondeados solo en la parte superior
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 12)
+    titleCorner.Parent = keybindTitle
+    
+    local instructionText = Instance.new("TextLabel")
+    instructionText.Size = UDim2.new(1, -20, 0, 40)
+    instructionText.Position = UDim2.new(0, 10, 0, 40)
+    instructionText.BackgroundTransparency = 1
+    instructionText.Text = "Presiona una tecla para asignar"
+    instructionText.TextColor3 = colors.text
+    instructionText.Font = Enum.Font.Gotham
+    instructionText.TextSize = 14
+    instructionText.ZIndex = 11
+    instructionText.Parent = keybindFrame
+    
+    local keyButton = Instance.new("TextButton")
+    keyButton.Size = UDim2.new(0, 100, 0, 40)
+    keyButton.Position = UDim2.new(0.5, -50, 0.5, 0)
+    keyButton.BackgroundColor3 = colors.accent
+    keyButton.BorderSizePixel = 0
+    keyButton.Text = tostring(RBXWix.ToggleKey):gsub("Enum.KeyCode.", "")
+    keyButton.TextColor3 = colors.text
+    keyButton.Font = Enum.Font.GothamBold
+    keyButton.TextSize = 16
+    keyButton.ZIndex = 11
+    keyButton.Parent = keybindFrame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 8)
+    buttonCorner.Parent = keyButton
+    
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 120, 0, 30)
+    closeButton.Position = UDim2.new(0.5, -60, 1, -40)
+    closeButton.BackgroundColor3 = colors.danger
+    closeButton.BorderSizePixel = 0
+    closeButton.Text = "Cerrar"
+    closeButton.TextColor3 = colors.text
+    closeButton.Font = Enum.Font.Gotham
+    closeButton.TextSize = 14
+    closeButton.ZIndex = 11
+    closeButton.Parent = keybindFrame
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeButton
+    
+    keyButton.MouseButton1Click:Connect(function()
+        keyButton.Text = "..."
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
+                RBXWix.ToggleKey = input.KeyCode
+                keyButton.Text = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
+                connection:Disconnect()
+            end
+        end)
+    end)
+    
+    closeButton.MouseButton1Click:Connect(function()
+        keybindFrame:Destroy()
+    end)
+end)
+
+-- Funciones ESP (placeholder)
+function enableESP()
+    -- Implementación de ESP aquí
+    print("ESP activado")
+end
+
+function disableESP()
+    -- Implementación para desactivar ESP aquí
+    print("ESP desactivado")
+end
+
+-- Conectar eventos de teclado
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
+        RBXWix.Enabled = not RBXWix.Enabled
+        mainFrame.Visible = RBXWix.Enabled
+        backgroundFrame.Visible = RBXWix.Enabled
+    end
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    RBXWix.Enabled = false
+    mainFrame.Visible = false
+    backgroundFrame.Visible = false
+end)
+
+-- Aplicar configuraciones periódicamente
+RunService.Heartbeat:Connect(function()
+    if RBXWix.WalkSpeedEnabled then
+        applyWalkSpeed()
+    end
+    if RBXWix.JumpPowerEnabled then
+        applyJumpPower()
+    end
+    if RBXWix.NoclipEnabled then
+        enableNoclip()
+    end
+end)
