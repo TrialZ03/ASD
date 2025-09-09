@@ -1,37 +1,759 @@
--- Añadir estas nuevas propiedades a la tabla RBXWix (al inicio, después de ESPObjects)
-RBXWix.ESPDistance = true
-RBXWix.ESPHealth = true
-RBXWix.ESPBox = true
-RBXWix.ESPSkeleton = false
+-- RBX Wix UI - Interfaz Mejorada con Prevención de Errores
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
--- Mejorar la función de noclip (reemplazar las funciones existentes)
-local noclipParts = {}
-local noclipConnection
+-- Verificar que el jugador existe
+local player = Players.LocalPlayer
+if not player then
+    warn("Player not found!")
+    return
+end
 
-local function enableNoclip()
-    local character = player.Character
-    if not character then return end
+-- Esperar a que el PlayerGui exista
+if not player:FindFirstChild("PlayerGui") then
+    player:WaitForChild("PlayerGui")
+end
+
+local RBXWix = {
+    Enabled = false,
+    ToggleKey = Enum.KeyCode.RightShift,
+    WalkSpeedEnabled = false,
+    WalkSpeedValue = 25,
+    JumpPowerEnabled = false,
+    JumpPowerValue = 50,
+    NoclipEnabled = false,
+    FullbrightEnabled = false,
+    ESPEnabled = false,
+    ESPDistance = true,
+    ESPHealth = true,
+    ESPBox = true,
+    ESPSkeleton = false,
+    ESPObjects = {}
+}
+
+-- Función segura para evitar errores
+local function safeCall(callback, errorMessage)
+    local success, err = pcall(callback)
+    if not success then
+        warn(errorMessage or "Error en safeCall: " .. tostring(err))
+        return false
+    end
+    return true
+end
+
+-- Colores (asegurarse de que todos estén definidos)
+local colors = {
+    background = Color3.fromRGB(20, 20, 25),
+    text = Color3.fromRGB(240, 240, 240),
+    accent = Color3.fromRGB(0, 180, 255),
+    toggleOn = Color3.fromRGB(0, 200, 83),
+    toggleOff = Color3.fromRGB(80, 80, 80),
+    card = Color3.fromRGB(30, 30, 35),
+    header = Color3.fromRGB(25, 25, 30),
+    danger = Color3.fromRGB(244, 67, 54),
+    tabActive = Color3.fromRGB(0, 120, 215),
+    tabInactive = Color3.fromRGB(40, 40, 40),
+    secondary = Color3.fromRGB(40, 40, 40)
+}
+
+-- Crear la interfaz principal
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RBXWixUI"
+screenGui.Parent = player.PlayerGui
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Ventana principal
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 550, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -275, 0.5, -225)
+mainFrame.BackgroundColor3 = colors.background
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = mainFrame
+
+-- Barra de título
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = colors.header
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleText = Instance.new("TextLabel")
+titleText.Name = "TitleText"
+titleText.Size = UDim2.new(1, -60, 1, 0)
+titleText.Position = UDim2.new(0, 10, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "RBX Wix Premium"
+titleText.TextColor3 = colors.text
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Font = Enum.Font.GothamBold
+titleText.TextSize = 16
+titleText.Parent = titleBar
+
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.BackgroundColor3 = colors.danger
+closeButton.BorderSizePixel = 0
+closeButton.Text = "X"
+closeButton.TextColor3 = colors.text
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 16
+closeButton.Parent = titleBar
+
+-- Barra de pestañas
+local tabContainer = Instance.new("Frame")
+tabContainer.Name = "TabContainer"
+tabContainer.Size = UDim2.new(1, 0, 0, 40)
+tabContainer.Position = UDim2.new(0, 0, 0, 30)
+tabContainer.BackgroundColor3 = colors.secondary
+tabContainer.BorderSizePixel = 0
+tabContainer.Parent = mainFrame
+
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.Parent = tabContainer
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+tabLayout.Padding = UDim.new(0, 5)
+
+-- Panel de contenido
+local contentFrame = Instance.new("ScrollingFrame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, 0, 1, -70)
+contentFrame.Position = UDim2.new(0, 0, 0, 70)
+contentFrame.BackgroundTransparency = 1
+contentFrame.ScrollBarThickness = 4
+contentFrame.ScrollBarImageColor3 = colors.accent
+contentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+contentFrame.Parent = mainFrame
+
+local contentLayout = Instance.new("UIListLayout")
+contentLayout.Parent = contentFrame
+contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+contentLayout.Padding = UDim.new(0, 10)
+
+-- Almacenar todas las conexiones para limpiarlas después
+local connections = {}
+
+-- Crear pestañas
+local tabs = {
+    {Name = "Movimiento", Icon = "🏃"},
+    {Name = "Visuales", Icon = "👁️"},
+    {Name = "Jugadores", Icon = "👥"},
+    {Name = "Utilidades", Icon = "🔧"}
+}
+
+local tabFrames = {}
+local tabButtons = {}
+
+for i, tabData in ipairs(tabs) do
+    -- Botón de pestaña
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = tabData.Name .. "Tab"
+    tabButton.Size = UDim2.new(0, 120, 0, 30)
+    tabButton.BackgroundColor3 = colors.tabInactive
+    tabButton.BorderSizePixel = 0
+    tabButton.Text = tabData.Icon .. " " .. tabData.Name
+    tabButton.TextColor3 = colors.text
+    tabButton.Font = Enum.Font.Gotham
+    tabButton.TextSize = 12
+    tabButton.Parent = tabContainer
     
-    -- Almacenar y desactivar colisiones de todas las partes
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") and part.CanCollide then
-            noclipParts[part] = true
-            part.CanCollide = false
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 5)
+    tabCorner.Parent = tabButton
+    
+    -- Frame de contenido de pestaña
+    local tabFrame = Instance.new("Frame")
+    tabFrame.Name = tabData.Name .. "Frame"
+    tabFrame.Size = UDim2.new(1, 0, 0, 0)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.Visible = i == 1
+    tabFrame.Parent = contentFrame
+    
+    local tabFrameLayout = Instance.new("UIListLayout")
+    tabFrameLayout.Parent = tabFrame
+    tabFrameLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    tabFrameLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabFrameLayout.Padding = UDim.new(0, 10)
+    
+    tabFrames[tabData.Name] = tabFrame
+    tabButtons[tabData.Name] = tabButton
+    
+    -- Conectar evento de clic al botón de pestaña
+    tabButton.MouseButton1Click:Connect(function()
+        for tabName, frame in pairs(tabFrames) do
+            if frame then
+                frame.Visible = (tabName == tabData.Name)
+            end
+        end
+        
+        -- Actualizar colores de pestañas
+        for name, btn in pairs(tabButtons) do
+            if btn then
+                if name == tabData.Name then
+                    btn.BackgroundColor3 = colors.tabActive
+                else
+                    btn.BackgroundColor3 = colors.tabInactive
+                end
+            end
+        end
+    end)
+    
+    -- Establecer la primera pestaña como activa
+    if i == 1 then
+        tabButton.BackgroundColor3 = colors.tabActive
+    end
+end
+
+-- Función para crear toggles
+function createToggle(name, description, default, parent, callback)
+    if not parent then
+        warn("Parent is nil for toggle: " .. name)
+        return
+    end
+    
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Name = name .. "Toggle"
+    toggleFrame.Size = UDim2.new(0.95, 0, 0, 60)
+    toggleFrame.BackgroundColor3 = colors.card
+    toggleFrame.BorderSizePixel = 0
+    toggleFrame.LayoutOrder = #parent:GetChildren()
+    toggleFrame.Parent = parent
+    
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 8)
+    frameCorner.Parent = toggleFrame
+    
+    local toggleText = Instance.new("TextLabel")
+    toggleText.Name = "Text"
+    toggleText.Size = UDim2.new(0.7, -10, 0.5, 0)
+    toggleText.Position = UDim2.new(0, 10, 0, 5)
+    toggleText.BackgroundTransparency = 1
+    toggleText.Text = name
+    toggleText.TextColor3 = colors.text
+    toggleText.TextXAlignment = Enum.TextXAlignment.Left
+    toggleText.Font = Enum.Font.GothamBold
+    toggleText.TextSize = 16
+    toggleText.Parent = toggleFrame
+    
+    local toggleDesc = Instance.new("TextLabel")
+    toggleDesc.Name = "Description"
+    toggleDesc.Size = UDim2.new(0.7, -10, 0.5, 0)
+    toggleDesc.Position = UDim2.new(0, 10, 0.5, 0)
+    toggleDesc.BackgroundTransparency = 1
+    toggleDesc.Text = description
+    toggleDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    toggleDesc.TextXAlignment = Enum.TextXAlignment.Left
+    toggleDesc.Font = Enum.Font.Gotham
+    toggleDesc.TextSize = 12
+    toggleDesc.Parent = toggleFrame
+    
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Size = UDim2.new(0, 40, 0, 20)
+    toggleButton.Position = UDim2.new(1, -50, 0.5, -10)
+    toggleButton.BackgroundColor3 = default and colors.toggleOn or colors.toggleOff
+    toggleButton.BorderSizePixel = 0
+    toggleButton.Text = ""
+    toggleButton.Parent = toggleFrame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(1, 0)
+    buttonCorner.Parent = toggleButton
+    
+    local status = default
+    
+    local connection = toggleButton.MouseButton1Click:Connect(function()
+        status = not status
+        if toggleButton then
+            if status then
+                toggleButton.BackgroundColor3 = colors.toggleOn
+            else
+                toggleButton.BackgroundColor3 = colors.toggleOff
+            end
+        end
+        if callback then
+            callback(status)
+        end
+    end)
+    
+    table.insert(connections, connection)
+    
+    return {
+        Set = function(value)
+            status = value
+            if toggleButton then
+                if status then
+                    toggleButton.BackgroundColor3 = colors.toggleOn
+                else
+                    toggleButton.BackgroundColor3 = colors.toggleOff
+                end
+            end
+        end,
+        Get = function()
+            return status
+        end
+    }
+end
+
+-- Función para crear sliders
+function createSlider(name, description, min, max, default, parent, callback)
+    if not parent then
+        warn("Parent is nil for slider: " .. name)
+        return
+    end
+    
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = name .. "Slider"
+    sliderFrame.Size = UDim2.new(0.95, 0, 0, 80)
+    sliderFrame.BackgroundColor3 = colors.card
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.LayoutOrder = #parent:GetChildren()
+    sliderFrame.Parent = parent
+    
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 8)
+    frameCorner.Parent = sliderFrame
+    
+    local sliderText = Instance.new("TextLabel")
+    sliderText.Name = "Text"
+    sliderText.Size = UDim2.new(0.7, -10, 0, 30)
+    sliderText.Position = UDim2.new(0, 10, 0, 5)
+    sliderText.BackgroundTransparency = 1
+    sliderText.Text = name
+    sliderText.TextColor3 = colors.text
+    sliderText.TextXAlignment = Enum.TextXAlignment.Left
+    sliderText.Font = Enum.Font.GothamBold
+    sliderText.TextSize = 16
+    sliderText.Parent = sliderFrame
+    
+    local valueText = Instance.new("TextLabel")
+    valueText.Name = "ValueText"
+    valueText.Size = UDim2.new(0.3, -10, 0, 30)
+    valueText.Position = UDim2.new(0.7, 0, 0, 5)
+    valueText.BackgroundTransparency = 1
+    valueText.Text = tostring(default)
+    valueText.TextColor3 = colors.text
+    valueText.TextXAlignment = Enum.TextXAlignment.Right
+    valueText.Font = Enum.Font.GothamBold
+    valueText.TextSize = 16
+    valueText.Parent = sliderFrame
+    
+    local sliderDesc = Instance.new("TextLabel")
+    sliderDesc.Name = "Description"
+    sliderDesc.Size = UDim2.new(1, -20, 0, 20)
+    sliderDesc.Position = UDim2.new(0, 10, 0, 35)
+    sliderDesc.BackgroundTransparency = 1
+    sliderDesc.Text = description
+    sliderDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    sliderDesc.TextXAlignment = Enum.TextXAlignment.Left
+    sliderDesc.Font = Enum.Font.Gotham
+    sliderDesc.TextSize = 12
+    sliderDesc.Parent = sliderFrame
+    
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Name = "SliderTrack"
+    sliderTrack.Size = UDim2.new(1, -20, 0, 6)
+    sliderTrack.Position = UDim2.new(0, 10, 1, -15)
+    sliderTrack.BackgroundColor3 = colors.toggleOff
+    sliderTrack.BorderSizePixel = 0
+    sliderTrack.Parent = sliderFrame
+    
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    trackCorner.Parent = sliderTrack
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = "SliderFill"
+    sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
+    sliderFill.Position = UDim2.new(0, 0, 0, 0)
+    sliderFill.BackgroundColor3 = colors.accent
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderTrack
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = sliderFill
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Name = "SliderButton"
+    sliderButton.Size = UDim2.new(0, 16, 0, 16)
+    sliderButton.Position = UDim2.new(0.5, -8, 0.5, -8)
+    sliderButton.BackgroundColor3 = colors.text
+    sliderButton.BorderSizePixel = 0
+    sliderButton.Text = ""
+    sliderButton.Parent = sliderTrack
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(1, 0)
+    buttonCorner.Parent = sliderButton
+    
+    local value = default
+    local isSliding = false
+    
+    local function updateSlider(newValue)
+        value = math.clamp(newValue, min, max)
+        local percentage = (value - min) / (max - min)
+        
+        if sliderFill and sliderButton then
+            sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            sliderButton.Position = UDim2.new(percentage, -8, 0.5, -8)
+        end
+        
+        if valueText then
+            valueText.Text = tostring(math.floor(value))
+        end
+        
+        if callback then
+            callback(value)
+        end
+    end
+    
+    local connection1 = sliderButton.MouseButton1Down:Connect(function()
+        isSliding = true
+    end)
+    
+    local connection2 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isSliding = false
+        end
+    end)
+    
+    local connection3 = UserInputService.InputChanged:Connect(function(input)
+        if isSliding and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            if sliderTrack then
+                local trackPos = sliderTrack.AbsolutePosition
+                local trackSize = sliderTrack.AbsoluteSize
+                local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
+                local newValue = min + (max - min) * relativeX
+                updateSlider(newValue)
+            end
+        end
+    end)
+    
+    local connection4 = sliderTrack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mousePos = UserInputService:GetMouseLocation()
+            if sliderTrack then
+                local trackPos = sliderTrack.AbsolutePosition
+                local trackSize = sliderTrack.AbsoluteSize
+                local relativeX = math.clamp((mousePos.X - trackPos.X) / trackSize.X, 0, 1)
+                local newValue = min + (max - min) * relativeX
+                updateSlider(newValue)
+            end
+        end
+    end)
+    
+    table.insert(connections, connection1)
+    table.insert(connections, connection2)
+    table.insert(connections, connection3)
+    table.insert(connections, connection4)
+    
+    updateSlider(default)
+    
+    return {
+        Set = function(newValue)
+            updateSlider(newValue)
+        end,
+        Get = function()
+            return value
+        end
+    }
+end
+
+-- Crear elementos de la interfaz por categorías
+
+-- Pestaña de Movimiento
+local walkSpeedSlider = createSlider("WalkSpeed", "Controla la velocidad de movimiento", 16, 100, 25, tabFrames.Movimiento, function(value)
+    RBXWix.WalkSpeedValue = value
+end)
+
+local walkSpeedToggle = createToggle("WalkSpeed", "Activa/desactiva la velocidad de movimiento", false, tabFrames.Movimiento, function(state)
+    RBXWix.WalkSpeedEnabled = state
+end)
+
+local jumpPowerSlider = createSlider("Jump Power", "Controla la fuerza de salto", 50, 200, 50, tabFrames.Movimiento, function(value)
+    RBXWix.JumpPowerValue = value
+end)
+
+local jumpPowerToggle = createToggle("Jump Power", "Activa/desactiva la fuerza de salto", false, tabFrames.Movimiento, function(state)
+    RBXWix.JumpPowerEnabled = state
+end)
+
+local noclipToggle = createToggle("Noclip", "Permite atravesar paredes y objetos", false, tabFrames.Movimiento, function(state)
+    RBXWix.NoclipEnabled = state
+end)
+
+-- Pestaña de Visuales
+local fullbrightToggle = createToggle("Fullbright", "Mejora la iluminación global", false, tabFrames.Visuales, function(state)
+    RBXWix.FullbrightEnabled = state
+    if state then
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    else
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    end
+end)
+
+-- Pestaña de Jugadores
+local espToggle = createToggle("ESP", "Muestra información de jugadores", false, tabFrames.Jugadores, function(state)
+    RBXWix.ESPEnabled = state
+    if state then
+        enableESP()
+    else
+        disableESP()
+    end
+end)
+
+-- Opciones adicionales de ESP
+local espDistanceToggle = createToggle("Mostrar Distancia", "Muestra la distancia a otros jugadores", true, tabFrames.Jugadores, function(state)
+    RBXWix.ESPDistance = state
+    updateESPVisibility()
+end)
+
+local espHealthToggle = createToggle("Mostrar Salud", "Muestra la salud de otros jugadores", true, tabFrames.Jugadores, function(state)
+    RBXWix.ESPHealth = state
+    updateESPVisibility()
+end)
+
+local espBoxToggle = createToggle("Mostrar Caja", "Muestra una caja alrededor de los jugadores", true, tabFrames.Jugadores, function(state)
+    RBXWix.ESPBox = state
+    updateESPVisibility()
+end)
+
+local espSkeletonToggle = createToggle("Mostrar Esqueleto", "Muestra el esqueleto a través de paredes", false, tabFrames.Jugadores, function(state)
+    RBXWix.ESPSkeleton = state
+    updateESPVisibility()
+end)
+
+-- Funciones de ESP mejoradas
+function enableESP()
+    -- Limpiar ESP existente
+    disableESP()
+    
+    -- Crear ESP para cada jugador
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player then
+            if otherPlayer.Character then
+                createESP(otherPlayer.Character, otherPlayer.Name)
+            else
+                -- Esperar a que el jugador tenga un personaje
+                local connection; connection = otherPlayer.CharacterAdded:Connect(function(character)
+                    if RBXWix.ESPEnabled then
+                        createESP(character, otherPlayer.Name)
+                    end
+                    connection:Disconnect()
+                end)
+                table.insert(connections, connection)
+            end
+        end
+    end
+    
+    -- Conectar para nuevos jugadores
+    local playerAddedConnection = Players.PlayerAdded:Connect(function(newPlayer)
+        local characterAddedConnection = newPlayer.CharacterAdded:Connect(function(character)
+            if RBXWix.ESPEnabled then
+                createESP(character, newPlayer.Name)
+            end
+        end)
+        
+        table.insert(connections, characterAddedConnection)
+    end)
+    
+    table.insert(connections, playerAddedConnection)
+end
+
+function disableESP()
+    for _, espObject in pairs(RBXWix.ESPObjects) do
+        if espObject and espObject:IsA("Instance") then
+            espObject:Destroy()
+        end
+    end
+    RBXWix.ESPObjects = {}
+end
+
+function updateESPVisibility()
+    for _, espObject in pairs(RBXWix.ESPObjects) do
+        if espObject and espObject:IsA("Instance") then
+            if espObject:IsA("Highlight") then
+                espObject.Enabled = RBXWix.ESPBox
+                espObject.DepthMode = RBXWix.ESPSkeleton and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
+            elseif espObject:IsA("BillboardGui") and espObject:FindFirstChild("DistanceLabel") then
+                espObject.DistanceLabel.Visible = RBXWix.ESPDistance
+            elseif espObject:IsA("BillboardGui") and espObject:FindFirstChild("HealthLabel") then
+                espObject.HealthLabel.Visible = RBXWix.ESPHealth
+            end
         end
     end
 end
 
-local function disableNoclip()
-    local character = player.Character
-    if not character then return end
-    
-    -- Restaurar colisiones solo para las partes que modificamos
-    for part, _ in pairs(noclipParts) do
-        if part and part.Parent then
-            part.CanCollide = true
+function createESP(character, playerName)
+    safeCall(function()
+        -- Esperar a que el personaje tenga partes
+        if not character:FindFirstChild("HumanoidRootPart") then
+            local waitStart = tick()
+            while not character:FindFirstChild("HumanoidRootPart") and tick() - waitStart < 5 do
+                wait(0.1)
+            end
         end
-    end
-    noclipParts = {}
+        
+        if not character:FindFirstChild("Head") then
+            local waitStart = tick()
+            while not character:FindFirstChild("Head") and tick() - waitStart < 5 do
+                wait(0.1)
+            end
+        end
+        
+        if not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then
+            return
+        end
+        
+        -- Crear highlight
+        local highlight = Instance.new("Highlight")
+        highlight.Name = playerName .. "ESP"
+        highlight.Adornee = character
+        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode = RBXWix.ESPSkeleton and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Enabled = RBXWix.ESPBox
+        highlight.Parent = character
+        
+        -- Crear billboard GUI para nombre y distancia
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = playerName .. "ESPInfo"
+        billboard.Adornee = character.Head
+        billboard.Size = UDim2.new(0, 200, 0, RBXWix.ESPHealth and 70 or 50)
+        billboard.StudsOffset = Vector3.new(0, 2, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = character
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0, 25)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = playerName
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 14
+        nameLabel.Parent = billboard
+        
+        local distanceLabel = Instance.new("TextLabel")
+        distanceLabel.Name = "DistanceLabel"
+        distanceLabel.Size = UDim2.new(1, 0, 0, 20)
+        distanceLabel.Position = UDim2.new(0, 0, 0, 25)
+        distanceLabel.BackgroundTransparency = 1
+        distanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        distanceLabel.TextStrokeTransparency = 0
+        distanceLabel.Font = Enum.Font.Gotham
+        distanceLabel.TextSize = 12
+        distanceLabel.Visible = RBXWix.ESPDistance
+        distanceLabel.Parent = billboard
+        
+        local healthLabel
+        if RBXWix.ESPHealth then
+            healthLabel = Instance.new("TextLabel")
+            healthLabel.Name = "HealthLabel"
+            healthLabel.Size = UDim2.new(1, 0, 0, 20)
+            healthLabel.Position = UDim2.new(0, 0, 0, 45)
+            healthLabel.BackgroundTransparency = 1
+            healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            healthLabel.TextStrokeTransparency = 0
+            healthLabel.Font = Enum.Font.Gotham
+            healthLabel.TextSize = 12
+            healthLabel.Visible = RBXWix.ESPHealth
+            healthLabel.Parent = billboard
+        end
+        
+        -- Actualizar información en tiempo real
+        local updateLoop = RunService.Heartbeat:Connect(function()
+            safeCall(function()
+                if not character or not character:FindFirstChild("HumanoidRootPart") or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+                    updateLoop:Disconnect()
+                    return
+                end
+                
+                -- Actualizar distancia
+                if RBXWix.ESPDistance and distanceLabel then
+                    local distance = (character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                    distanceLabel.Text = string.format("Distancia: %.1f", distance)
+                end
+                
+                -- Actualizar salud
+                if RBXWix.ESPHealth and healthLabel and character:FindFirstChildOfClass("Humanoid") then
+                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+                    healthLabel.Text = string.format("Salud: %d/%d", humanoid.Health, humanoid.MaxHealth)
+                    
+                    -- Cambiar color según la salud
+                    local healthPercent = humanoid.Health / humanoid.MaxHealth
+                    if healthPercent > 0.7 then
+                        healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    elseif healthPercent > 0.3 then
+                        healthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                    else
+                        healthLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    end
+                end
+            end, "Error en actualización de ESP")
+        end)
+        
+        table.insert(connections, updateLoop)
+        table.insert(RBXWix.ESPObjects, highlight)
+        table.insert(RBXWix.ESPObjects, billboard)
+    end, "Error al crear ESP para " .. playerName)
+end
+
+-- Sistema de Noclip mejorado
+local noclipParts = {}
+local noclipConnection
+
+local function enableNoclip()
+    safeCall(function()
+        local character = player.Character
+        if not character then return end
+        
+        -- Almacenar y desactivar colisiones de todas las partes
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                noclipParts[part] = true
+                part.CanCollide = false
+            end
+        end
+    end, "Error en enableNoclip")
+end
+
+local function disableNoclip()
+    safeCall(function()
+        -- Restaurar colisiones solo para las partes que modificamos
+        for part, _ in pairs(noclipParts) do
+            if part and part.Parent then
+                part.CanCollide = true
+            end
+        end
+        noclipParts = {}
+    end, "Error en disableNoclip")
 end
 
 -- Conectar noclip al ciclo de Heartbeat
@@ -40,152 +762,171 @@ if noclipConnection then
 end
 
 noclipConnection = RunService.Heartbeat:Connect(function()
-    if RBXWix.NoclipEnabled then
-        enableNoclip()
-    else
-        disableNoclip()
-    end
+    safeCall(function()
+        if RBXWix.NoclipEnabled then
+            enableNoclip()
+        else
+            disableNoclip()
+        end
+    end, "Error en ciclo de Noclip")
 end)
 table.insert(connections, noclipConnection)
 
--- Modificar la función createESP para incluir las nuevas opciones
-function createESP(character, playerName)
-    if not character:FindFirstChild("HumanoidRootPart") then
-        local waitStart = tick()
-        while not character:FindFirstChild("HumanoidRootPart") and tick() - waitStart < 5 do
-            wait(0.1)
-        end
-    end
-    
-    if not character:FindFirstChild("Head") then
-        local waitStart = tick()
-        while not character:FindFirstChild("Head") and tick() - waitStart < 5 do
-            wait(0.1)
-        end
-    end
-    
-    if not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then
-        return
-    end
-    
-    -- Crear highlight (caja)
-    local highlight = Instance.new("Highlight")
-    highlight.Name = playerName .. "ESP"
-    highlight.Adornee = character
-    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.FillTransparency = 0.8
-    highlight.OutlineTransparency = 0
-    highlight.DepthMode = RBXWix.ESPSkeleton and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Enabled = RBXWix.ESPBox
-    highlight.Parent = character
-    
-    -- Crear billboard GUI para información
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = playerName .. "ESPInfo"
-    billboard.Adornee = character.Head
-    billboard.Size = UDim2.new(0, 200, 0, RBXWix.ESPHealth and 70 or 50)
-    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = character
-    
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 0, 25)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = playerName
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 14
-    nameLabel.Parent = billboard
-    
-    local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Size = UDim2.new(1, 0, 0, 20)
-    distanceLabel.Position = UDim2.new(0, 0, 0, 25)
-    distanceLabel.BackgroundTransparency = 1
-    distanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    distanceLabel.TextStrokeTransparency = 0
-    distanceLabel.Font = Enum.Font.Gotham
-    distanceLabel.TextSize = 12
-    distanceLabel.Visible = RBXWix.ESPDistance
-    distanceLabel.Parent = billboard
-    
-    local healthLabel
-    if RBXWix.ESPHealth then
-        healthLabel = Instance.new("TextLabel")
-        healthLabel.Size = UDim2.new(1, 0, 0, 20)
-        healthLabel.Position = UDim2.new(0, 0, 0, 45)
-        healthLabel.BackgroundTransparency = 1
-        healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        healthLabel.TextStrokeTransparency = 0
-        healthLabel.Font = Enum.Font.Gotham
-        healthLabel.TextSize = 12
-        healthLabel.Parent = billboard
-    end
-    
-    -- Actualizar información en tiempo real
-    local updateLoop = RunService.Heartbeat:Connect(function()
-        if not character or not character:FindFirstChild("HumanoidRootPart") or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-            updateLoop:Disconnect()
-            return
-        end
-        
-        -- Actualizar distancia
-        if RBXWix.ESPDistance then
-            local distance = (character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            distanceLabel.Text = string.format("Distancia: %.1f", distance)
-        end
-        
-        -- Actualizar salud
-        if RBXWix.ESPHealth and character:FindFirstChildOfClass("Humanoid") and healthLabel then
+-- Funciones de gameplay con verificaciones de seguridad
+local function applyWalkSpeed()
+    safeCall(function()
+        local character = player.Character
+        if character then
             local humanoid = character:FindFirstChildOfClass("Humanoid")
-            healthLabel.Text = string.format("Salud: %d/%d", humanoid.Health, humanoid.MaxHealth)
-            
-            -- Cambiar color según la salud
-            local healthPercent = humanoid.Health / humanoid.MaxHealth
-            if healthPercent > 0.7 then
-                healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            elseif healthPercent > 0.3 then
-                healthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-            else
-                healthLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            if humanoid then
+                if RBXWix.WalkSpeedEnabled then
+                    humanoid.WalkSpeed = RBXWix.WalkSpeedValue
+                else
+                    humanoid.WalkSpeed = 16
+                end
             end
         end
-        
-        -- Actualizar visibilidad de elementos
-        if highlight then
-            highlight.Enabled = RBXWix.ESPBox
-            highlight.DepthMode = RBXWix.ESPSkeleton and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
-        end
-        
-        if distanceLabel then
-            distanceLabel.Visible = RBXWix.ESPDistance
-        end
-        
-        if healthLabel then
-            healthLabel.Visible = RBXWix.ESPHealth
-        end
-    end)
-    
-    table.insert(connections, updateLoop)
-    table.insert(RBXWix.ESPObjects, highlight)
-    table.insert(RBXWix.ESPObjects, billboard)
+    end, "Error en applyWalkSpeed")
 end
 
--- Añadir opciones de ESP en la pestaña de Jugadores (después del toggle principal de ESP)
-local espDistanceToggle = createToggle("Mostrar Distancia", "Muestra la distancia a otros jugadores", true, tabFrames.Jugadores, function(state)
-    RBXWix.ESPDistance = state
-end)
+local function applyJumpPower()
+    safeCall(function()
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                if RBXWix.JumpPowerEnabled then
+                    humanoid.JumpPower = RBXWix.JumpPowerValue
+                else
+                    humanoid.JumpPower = 50
+                end
+            end
+        end
+    end, "Error en applyJumpPower")
+end
 
-local espHealthToggle = createToggle("Mostrar Salud", "Muestra la salud de otros jugadores", true, tabFrames.Jugadores, function(state)
-    RBXWix.ESPHealth = state
+-- Loop principal para aplicar las funciones
+local heartbeatConnection = RunService.Heartbeat:Connect(function()
+    safeCall(function()
+        if RBXWix.WalkSpeedEnabled then
+            applyWalkSpeed()
+        end
+        
+        if RBXWix.JumpPowerEnabled then
+            applyJumpPower()
+        end
+    end, "Error en ciclo principal")
 end)
+table.insert(connections, heartbeatConnection)
 
-local espBoxToggle = createToggle("Mostrar Caja", "Muestra una caja alrededor de los jugadores", true, tabFrames.Jugadores, function(state)
-    RBXWix.ESPBox = state
-end)
+-- Función para abrir/cerrar la interfaz
+local function toggleUI()
+    RBXWix.Enabled = not RBXWix.Enabled
+    if mainFrame then
+        mainFrame.Visible = RBXWix.Enabled
+    end
+end
 
-local espSkeletonToggle = createToggle("Mostrar Esqueleto", "Muestra el esqueleto a través de paredes", false, tabFrames.Jugadores, function(state)
-    RBXWix.ESPSkeleton = state
+-- Conectar eventos
+local inputBeganConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == RBXWix.ToggleKey then
+        toggleUI()
+    end
 end)
+table.insert(connections, inputBeganConnection)
+
+if closeButton then
+    local closeConnection = closeButton.MouseButton1Click:Connect(function()
+        toggleUI()
+    end)
+    table.insert(connections, closeConnection)
+end
+
+-- Sistema de arrastre mejorado para la ventana
+local dragging = false
+local dragStart
+local startPos
+
+local function update(input)
+    safeCall(function()
+        if not mainFrame then return end
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end, "Error en arrastre de ventana")
+end
+
+if titleBar then
+    local titleBarConnection1 = titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            
+            -- Capturar el ratón incluso si se sale de la ventana
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    if connection then
+                        connection:Disconnect()
+                    end
+                end
+            end)
+        end
+    end)
+    table.insert(connections, titleBarConnection1)
+
+    local titleBarConnection2 = titleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            if dragging then
+                update(input)
+            end
+        end
+    end)
+    table.insert(connections, titleBarConnection2)
+end
+
+-- Detener el arrastre cuando se suelta el botón del ratón
+local dragEndConnection = UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+table.insert(connections, dragEndConnection)
+
+-- Ajustar tamaño del contenido
+if contentLayout then
+    local contentSizeConnection = contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        if contentFrame and contentLayout then
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+        end
+    end)
+    table.insert(connections, contentSizeConnection)
+end
+
+-- Función de limpieza para evitar memory leaks
+local function cleanup()
+    for _, connection in ipairs(connections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            pcall(function() connection:Disconnect() end)
+        end
+    end
+    connections = {}
+    
+    -- Limpiar ESP
+    disableESP()
+    
+    -- Limpiar noclip
+    if noclipConnection then
+        noclipConnection:Disconnect()
+    end
+    disableNoclip()
+end
+
+-- Conectar la limpieza cuando la GUI se destruye
+if screenGui then
+    screenGui.Destroying:Connect(cleanup)
+end
+
+-- Mensaje de inicialización
+print("RBX Wix UI cargado correctamente. Presiona RightShift para abrir/cerrar el menú.")
